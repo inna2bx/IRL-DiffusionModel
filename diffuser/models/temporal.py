@@ -3,6 +3,7 @@ import torch.nn as nn
 import einops
 from einops.layers.torch import Rearrange
 import pdb
+import numpy as np
 
 from .helpers import (
     SinusoidalPosEmb,
@@ -133,8 +134,6 @@ class TemporalUnet(nn.Module):
         x = einops.rearrange(x, 'b t h -> b h t')
         return x
 
-#class TemporalValue(nn.Module):
-
 class SimpleValueFunction(nn.Module):
     def __init__(
         self,
@@ -159,9 +158,31 @@ class SimpleValueFunction(nn.Module):
         out = torch.sum(out)
         out = torch.reshape(out, (1,1))
 
-        return out * 5
+        return out * 3   
 
-    
+
+class InvValueFunction(nn.Module):
+    def __init__(
+        self,
+        horizon,
+        transition_dim,
+        cond_dim,
+        dim=32,
+        time_dim=None,
+        out_dim=1,
+        dim_mults=(1, 2, 4, 8),
+    ):
+        super().__init__()
+
+        self.fc =  nn.Linear(horizon*transition_dim, 1)
+
+
+    def forward(self, x, cond, time, *args):
+        out = self.fc(x.flatten())
+        out = torch.reshape(out, (1,1))
+
+        return out
+
 
 class ValueFunction(nn.Module):
 

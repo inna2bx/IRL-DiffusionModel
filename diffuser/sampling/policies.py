@@ -20,12 +20,16 @@ class GuidedPolicy:
         self.preprocess_fn = get_policy_preprocess_fn(preprocess_fns)
         self.sample_kwargs = sample_kwargs
 
-    def __call__(self, conditions, batch_size=1, verbose=True):
+    def __call__(self, conditions, batch_size=1, 
+                 verbose=True, return_tensor = False):
         conditions = {k: self.preprocess_fn(v) for k, v in conditions.items()}
         conditions = self._format_conditions(conditions, batch_size)
 
         ## run reverse diffusion process
         samples = self.diffusion_model(conditions, guide=self.guide, verbose=verbose, **self.sample_kwargs)
+
+        # samples.trajectories.register_hook(lambda grad: print(f'test 2: {grad}'))
+
         trajectories = utils.to_np(samples.trajectories)
 
         ## extract action [ batch_size x horizon x transition_dim ]
@@ -39,7 +43,10 @@ class GuidedPolicy:
         observations = self.normalizer.unnormalize(normed_observations, 'observations')
 
         trajectories = Trajectories(actions, observations, samples.values)
-        return action, trajectories
+        if return_tensor:
+            return action, trajectories, samples.trajectories
+        else:    
+            return action, trajectories
 
     @property
     def device(self):

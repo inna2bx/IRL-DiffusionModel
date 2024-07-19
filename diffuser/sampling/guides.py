@@ -16,6 +16,6 @@ class ValueGuide(nn.Module):
     def gradients(self, x, *args):
         x.requires_grad_()
         y = self(x, *args)
-        grad = torch.autograd.grad([y.sum()], [x])[0]
+        grad = torch.autograd.grad([y.sum()], [x], create_graph=True)[0]
         x.detach()
         return y, grad

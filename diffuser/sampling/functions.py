@@ -6,7 +6,7 @@ from diffuser.models.helpers import (
 )
 
 
-@torch.no_grad()
+#@torch.no_grad()
 def n_step_guided_p_sample(
     model, x, cond, t, guide, scale=0.001, t_stopgrad=0, n_guide_steps=1, scale_grad_by_std=True,
 ):
@@ -17,7 +17,7 @@ def n_step_guided_p_sample(
     for _ in range(n_guide_steps):
         with torch.enable_grad():
             y, grad = guide.gradients(x, cond, t)
-
+        #grad.register_hook(lambda grad: print(f'test 7'))
         if scale_grad_by_std:
             grad = model_var * grad
 

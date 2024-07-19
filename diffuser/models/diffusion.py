@@ -14,7 +14,7 @@ from .helpers import (
 
 Sample = namedtuple('Sample', 'trajectories values chains')
 
-@torch.no_grad()
+#@torch.no_grad()
 def default_sample_fn(model, x, cond, t):
     model_mean, _, model_log_variance = model.p_mean_variance(x=x, cond=cond, t=t)
     model_std = torch.exp(0.5 * model_log_variance)
@@ -150,7 +150,7 @@ class GaussianDiffusion(nn.Module):
                 x_start=x_recon, x_t=x, t=t)
         return model_mean, posterior_variance, posterior_log_variance
 
-    @torch.no_grad()
+    #@torch.no_grad()
     def p_sample(self, x, cond, t):
         b, *_, device = *x.shape, x.device
         model_mean, _, model_log_variance = self.p_mean_variance(x=x, cond=cond, t=t)
@@ -159,7 +159,7 @@ class GaussianDiffusion(nn.Module):
         nonzero_mask = (1 - (t == 0).float()).reshape(b, *((1,) * (len(x.shape) - 1)))
         return model_mean + nonzero_mask * (0.5 * model_log_variance).exp() * noise
 
-    @torch.no_grad()
+    #@torch.no_grad()
     def old_p_sample_loop(self, shape, cond, verbose=True, return_diffusion=False):
         device = self.betas.device
 
@@ -186,7 +186,7 @@ class GaussianDiffusion(nn.Module):
         else:
             return x
     
-    @torch.no_grad()
+    #@torch.no_grad()
     def p_sample_loop(self, shape, cond, verbose=True, return_chain=False, sample_fn=default_sample_fn, **sample_kwargs):
         device = self.betas.device
 
@@ -200,6 +200,7 @@ class GaussianDiffusion(nn.Module):
         for i in reversed(range(0, self.n_timesteps)):
             t = make_timesteps(batch_size, i, device)
             x, values = sample_fn(self, x, cond, t, **sample_kwargs)
+
             x = apply_conditioning(x, cond, self.action_dim)
 
             progress.update({'t': i, 'vmin': values.min().item(), 'vmax': values.max().item()})
@@ -208,10 +209,11 @@ class GaussianDiffusion(nn.Module):
         progress.stamp()
 
         x, values = sort_by_values(x, values)
+        
         if return_chain: chain = torch.stack(chain, dim=1)
         return Sample(x, values, chain)
 
-    @torch.no_grad()
+    #@torch.no_grad()
     def conditional_sample(self, cond, *args, horizon=None, **kwargs):
         '''
             conditions : [ (time, state), ... ]
@@ -221,7 +223,9 @@ class GaussianDiffusion(nn.Module):
         horizon = horizon or self.horizon
         shape = (batch_size, horizon, self.transition_dim)
 
-        return self.p_sample_loop(shape, cond, *args, **kwargs)
+        out = self.p_sample_loop(shape, cond, *args, **kwargs)
+        # out.trajectories.register_hook(lambda grad: print(f'test 3: {grad}'))
+        return out
 
     #------------------------------------------ training ------------------------------------------#
 
