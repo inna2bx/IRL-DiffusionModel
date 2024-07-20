@@ -84,40 +84,49 @@ inv_policy_config = utils.Config(
 inv_policy = inv_policy_config()
 
 #---------------------------------- main loop ----------------------------------#
-observation = env.reset_to_location((1, 1))
-
-if args.conditional:
-    print('Resetting target')
-    env.set_target()
-
-## observations for rendering
-rollout = [observation.copy()]
-
-total_reward = 0
-
-conditions = {0: observation}
 
 #generating exp Trajectories
-exp_trajectory = load_exp_trajectories()
+exp_trajectories = load_exp_trajectories()
 
 
 
-optimiser = torch.optim.Adam(inv_guide.parameters(), lr=0.001)
+optimiser = torch.optim.Adam(inv_guide.parameters(), lr=2e-4)
 
 losses = []
+K = 10
 
 for epoch in range(200):
-    for exp_trajectory in load_exp_trajectories:
-        len
-        # optimiser.zero_grad()
-        # _, _, sampled_trajectory = inv_policy(conditions, batch_size=args.batch_size, verbose=args.verbose, return_tensor = True)
+    print(f'epoch: {epoch}')
+    epoch_loss = 0
+    for exp_trajectory in exp_trajectories:
+        exp_trajectory_len = exp_trajectory.shape[1]
+        for t in range(exp_trajectory_len):
+            if t % K == 0:
+                optimiser.zero_grad()
+                clipped_exp_trajectory = exp_trajectory[:,t:t+K, :]
+                first_observation = clipped_exp_trajectory[0, 0, :4].reshape((4)).detach().numpy()
 
-        # loss = torch.sum(torch.square(exp_trajectory - sampled_trajectory))
+                conditions = {0: first_observation}
+                _, _, sampled_trajectory = inv_policy(conditions, batch_size=args.batch_size, verbose=args.verbose, return_tensor = True)
+                clipped_sampled_trajectory = sampled_trajectory[:,:K,:]
 
-        # loss.backward(retain_graph=True)
-        # optimiser.step()
+                loss = torch.sum(torch.square(clipped_exp_trajectory - clipped_sampled_trajectory)) / (K*6)
 
-        # losses.append(loss.detach())
+                loss.backward()
+                optimiser.step()
+
+
+
+                epoch_loss += loss.detach()
+    print(epoch_loss)
+    losses.append(epoch_loss)
+
+    if epoch % 10 == 0:
+        plt.plot(losses)
+        plt.ylabel('loss')
+        plt.xlabel('epoch')
+        plt.savefig('loss.png')
+
 
 plt.plot(losses)
 plt.ylabel('loss')
@@ -162,7 +171,6 @@ for t in range(env.max_episode_steps):
 
     observation = next_observation
 
-print('pippo')
 print(join(args.savepath, 'rollout.png'))
 renderer.composite(join(args.savepath, 'rollout_inv.png'), np.array(rollout)[None], ncol=1)
 
