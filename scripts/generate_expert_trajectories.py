@@ -9,42 +9,12 @@ import diffuser.utils as utils
 
 import diffuser.sampling as sampling
 
-def generate_trajectory(env, policy, starting_location = (1,1)):
-    observation = env.reset_to_location(starting_location)
-    rollout = [observation.copy()]
-
-    trajectory = []
-
-    total_reward = 0
-
-    for t in range(env.max_episode_steps):
-
-        print(f't: {t}')
-        conditions = {0: observation}
-        
-        action, _ = policy(conditions, batch_size=args.batch_size, verbose=args.verbose)
-
-        next_observation, reward, terminal, _ = env.step(action)
-        total_reward += reward
-
-        observation_tensor = torch.from_numpy(observation)
-        action_tensor = torch.from_numpy(action)
-        trajectory.append(torch.cat((observation_tensor, action_tensor)))
-
-        ## update rollout observations
-        rollout.append(next_observation.copy())
-
-        if terminal:
-            break
-
-        observation = next_observation
-    
-    trajectory = torch.stack(trajectory, dim= 0).reshape((1, env.max_episode_steps, 6))
-
-    return rollout, trajectory
+import diffuser.utils.trajectory as trajectory
 
 
-NUM_EXP_TRAJECTORY = 2
+NUM_EXP_TRAJECTORY = 64
+
+FOLDER = 'exp_trajectories'
 
 class Parser(utils.Parser):
     dataset: str = 'maze2d-umaze-v1'
@@ -96,5 +66,7 @@ policy_config = utils.Config(
 policy = policy_config()
 
 for idx in range(NUM_EXP_TRAJECTORY):
-    _, exp_trajectory = generate_trajectory(env, policy)
-    torch.save(exp_trajectory, f'exp_trajectories/idx_{idx}.pt')
+    print(f'---------------------- {idx} ----------------------')
+    exp_rollout, exp_trajectory = trajectory.generate_trajectory(env, policy, args)
+    torch.save(exp_trajectory, f'{FOLDER}/idx_{idx}.pt')
+    renderer.composite(f'{FOLDER}/idx_{idx}_rollout.png', np.array(exp_rollout)[None], ncol=1)

@@ -7,24 +7,22 @@ import torch
 
 import matplotlib.pyplot as plt
 
-#from diffuser.guides.policies import Policy
 import diffuser.datasets as datasets
 import diffuser.utils as utils
 
 import diffuser.sampling as sampling
 
 from diffuser.models.temporal import InvValueFunction
+from diffuser.utils.trajectory import load_exp_trajectories, generate_trajectory
 
-
-def load_exp_trajectories():
-    trajectory_files = os.listdir('exp_trajectories')
-    exp_trajectories = []
-    for file in trajectory_files:
-        exp_trajectory = torch.load(f'exp_trajectories/{file}')
-        exp_trajectories.append(exp_trajectory)
-    
-    return exp_trajectories
-
+def plot_loss(loss):
+    plt.plot(loss)
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.savefig(join(args.savepath, 'loss_inv_reward_training.pdf'),
+                        bbox_inches='tight',
+                        dpi=400,
+                        transparent=True)
 
 
 class Parser(utils.Parser):
@@ -35,8 +33,11 @@ class Parser(utils.Parser):
 
 args = Parser().parse_args('inv')
 
+TRAJ_STEP_SIZE = 10
 
-# logger = utils.Logger(args)
+N_EPOCHS = 500
+
+GAMMA_LOSS = 0.6
 
 env = datasets.load_environment(args.dataset)
 #---------------------------------- loading ----------------------------------#
@@ -83,99 +84,73 @@ inv_policy_config = utils.Config(
 
 inv_policy = inv_policy_config()
 
-#---------------------------------- main loop ----------------------------------#
 
-#generating exp Trajectories
-exp_trajectories = load_exp_trajectories()
+#---------------------------------- main loop ----------------------------------#
+exp_trajectories = load_exp_trajectories(n_trajectories=2)
 
 
 
 optimiser = torch.optim.Adam(inv_guide.parameters(), lr=2e-4)
+loss_weight = torch.tensor([GAMMA_LOSS]).repeat(args.horizon)
+exponents = torch.arange(args.horizon)
+loss_weight = torch.pow(loss_weight, exponents)
 
 losses = []
-K = 10
 
-for epoch in range(200):
+
+for epoch in range(N_EPOCHS):
     print(f'epoch: {epoch}')
     epoch_loss = 0
     for exp_trajectory in exp_trajectories:
         exp_trajectory_len = exp_trajectory.shape[1]
         for t in range(exp_trajectory_len):
-            if t % K == 0:
+            if t % TRAJ_STEP_SIZE == 0:
                 optimiser.zero_grad()
-                clipped_exp_trajectory = exp_trajectory[:,t:t+K, :]
+
+                index_end = t+args.horizon
+                if index_end < exp_trajectory_len:
+                    clipped_exp_trajectory = exp_trajectory[:,t:index_end, :]
+                else:
+                    clipped_exp_trajectory = exp_trajectory[:,t:, :]
+
+                clipped_exp_trajectory_len = clipped_exp_trajectory.shape[1]
+                
                 first_observation = clipped_exp_trajectory[0, 0, :4].reshape((4)).detach().numpy()
 
                 conditions = {0: first_observation}
-                _, _, sampled_trajectory = inv_policy(conditions, batch_size=args.batch_size, verbose=args.verbose, return_tensor = True)
-                clipped_sampled_trajectory = sampled_trajectory[:,:K,:]
+                _, _, sampled_trajectory = inv_policy(conditions, batch_size=args.batch_size, return_tensor = True)
+                clipped_sampled_trajectory = sampled_trajectory[:,:clipped_exp_trajectory_len,:]
+                clipped_loss_weight = loss_weight[:clipped_exp_trajectory_len]
 
-                loss = torch.sum(torch.square(clipped_exp_trajectory - clipped_sampled_trajectory)) / (K*6)
+                clipped_loss_weight = clipped_loss_weight[None,:,None]
+
+                loss = torch.sum(clipped_loss_weight*torch.square(clipped_exp_trajectory - clipped_sampled_trajectory)) / (torch.sum(clipped_loss_weight) * 6)
 
                 loss.backward()
                 optimiser.step()
-
-
-
                 epoch_loss += loss.detach()
+    
     print(epoch_loss)
     losses.append(epoch_loss)
 
     if epoch % 10 == 0:
-        plt.plot(losses)
-        plt.ylabel('loss')
-        plt.xlabel('epoch')
-        plt.savefig('loss.png')
+        plot_loss(losses)
+        torch.save(inv_guide.state_dict(), 
+                   join(args.savepath, 'model_weights.pth'))
 
 
-plt.plot(losses)
-plt.ylabel('loss')
-plt.xlabel('epoch')
-plt.savefig('loss.png')
+plot_loss(losses)
+torch.save(inv_guide.state_dict(), join(args.savepath, 'model_weights.pth'))
 
 
-observation = env.reset_to_location((1, 1))
+rollout, _ = generate_trajectory(env, inv_policy, args, starting_location=(1,1))
 
-if args.conditional:
-    print('Resetting target')
-    env.set_target()
-rollout = [observation.copy()]
+renderer.composite(join(args.savepath, 'rollout_inv_1_1.pdf'), np.array(rollout)[None], ncol=1)
 
-total_reward = 0
+rollout, _ = generate_trajectory(env, inv_policy, args, starting_location=(3,1))
 
-for t in range(env.max_episode_steps):
-    conditions = {0: observation}
-    
-    action, samples = inv_policy(conditions, batch_size=args.batch_size, verbose=args.verbose)
+renderer.composite(join(args.savepath, 'rollout_inv_3_1.pdf'), np.array(rollout)[None], ncol=1)
 
-    next_observation, reward, terminal, _ = env.step(action)
-    total_reward += reward
-    score = env.get_normalized_score(total_reward)
-    print(
-        f't: {t} | r: {reward:.2f} |  R: {total_reward:.2f} | score: {score:.4f} | '
-        f'{action}'
-    )
+rollout, _ = generate_trajectory(env, inv_policy, args, starting_location=(2,3))
 
-    if 'maze2d' in args.dataset:
-        xy = next_observation[:2]
-        goal = env.unwrapped._target
-        print(
-            f'maze | pos: {xy} | goal: {goal}'
-        )
-
-    ## update rollout observations
-    rollout.append(next_observation.copy())
-
-    if terminal:
-        break
-
-    observation = next_observation
-
-print(join(args.savepath, 'rollout.png'))
-renderer.composite(join(args.savepath, 'rollout_inv.png'), np.array(rollout)[None], ncol=1)
-
-## save result as a json file
-# json_path = join(args.savepath, 'rollout.json')
-# json_data = {'score': score, 'step': t, 'return': total_reward, 'term': terminal,
-#     'epoch_diffusion': diffusion_experiment.epoch}
-# json.dump(json_data, open(json_path, 'w'), indent=2, sort_keys=True)
+renderer.composite(join(args.savepath, 'rollout_inv_2_3.pdf'), np.array(rollout)[None], ncol=1)

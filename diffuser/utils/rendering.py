@@ -317,7 +317,12 @@ class MazeRenderer:
         nrow = len(images) // ncol
         images = einops.rearrange(images,
             '(nrow ncol) H W C -> (nrow H) (ncol W) C', nrow=nrow, ncol=ncol)
-        imageio.imsave(savepath, images)
+        #imageio.imsave(savepath, images)
+        plt.imshow(images, interpolation='nearest')
+        plt.savefig(savepath,
+                    bbox_inches='tight',
+                    dpi=400,
+                    transparent=True)
         print(f'Saved {len(paths)} samples to: {savepath}')
 
 class Maze2dRenderer(MazeRenderer):
