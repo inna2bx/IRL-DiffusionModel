@@ -158,36 +158,10 @@ class GaussianDiffusion(nn.Module):
         # no noise when t == 0
         nonzero_mask = (1 - (t == 0).float()).reshape(b, *((1,) * (len(x.shape) - 1)))
         return model_mean + nonzero_mask * (0.5 * model_log_variance).exp() * noise
-
-    #@torch.no_grad()
-    def old_p_sample_loop(self, shape, cond, verbose=True, return_diffusion=False):
-        device = self.betas.device
-
-        batch_size = shape[0]
-        x = torch.randn(shape, device=device)
-        x = apply_conditioning(x, cond, self.action_dim)
-
-        if return_diffusion: diffusion = [x]
-
-        progress = utils.Progress(self.n_timesteps) if verbose else utils.Silent()
-        for i in reversed(range(0, self.n_timesteps)):
-            timesteps = torch.full((batch_size,), i, device=device, dtype=torch.long)
-            x = self.p_sample(x, cond, timesteps)
-            x = apply_conditioning(x, cond, self.action_dim)
-
-            progress.update({'t': i})
-
-            if return_diffusion: diffusion.append(x)
-
-        progress.close()
-
-        if return_diffusion:
-            return x, torch.stack(diffusion, dim=1)
-        else:
-            return x
     
     #@torch.no_grad()
-    def p_sample_loop(self, shape, cond, verbose=True, return_chain=False, sample_fn=default_sample_fn, **sample_kwargs):
+    def p_sample_loop(self, shape, cond, verbose=False, return_chain=False, sample_fn=default_sample_fn, 
+                      no_grad_diff_steps = 0, **sample_kwargs):
         device = self.betas.device
 
         batch_size = shape[0]
@@ -197,10 +171,19 @@ class GaussianDiffusion(nn.Module):
         chain = [x] if return_chain else None
 
         progress = utils.Progress(self.n_timesteps) if verbose else utils.Silent()
-        for i in reversed(range(0, self.n_timesteps)):
+        with torch.no_grad():
+            for i in reversed(range(0, no_grad_diff_steps)):
+                t = make_timesteps(batch_size, i, device)
+                x, values = sample_fn(self, x, cond, t, **sample_kwargs)
+                x = apply_conditioning(x, cond, self.action_dim)
+
+                progress.update({'t': i, 'vmin': values.min().item(), 'vmax': values.max().item()})
+                if return_chain: chain.append(x)
+        
+        for i in reversed(range(no_grad_diff_steps, self.n_timesteps)):
             t = make_timesteps(batch_size, i, device)
             x, values = sample_fn(self, x, cond, t, **sample_kwargs)
-
+            
             x = apply_conditioning(x, cond, self.action_dim)
 
             progress.update({'t': i, 'vmin': values.min().item(), 'vmax': values.max().item()})
@@ -224,7 +207,6 @@ class GaussianDiffusion(nn.Module):
         shape = (batch_size, horizon, self.transition_dim)
 
         out = self.p_sample_loop(shape, cond, *args, **kwargs)
-        # out.trajectories.register_hook(lambda grad: print(f'test 3: {grad}'))
         return out
 
     #------------------------------------------ training ------------------------------------------#

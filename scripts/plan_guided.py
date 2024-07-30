@@ -65,6 +65,7 @@ policy = policy_config()
 
 #---------------------------------- main loop ----------------------------------#
 observation = env.reset_to_location((1, 1))
+observation = env.reset()
 
 if args.conditional:
     print('Resetting target')

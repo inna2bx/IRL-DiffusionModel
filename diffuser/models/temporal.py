@@ -12,6 +12,10 @@ from .helpers import (
     Conv1dBlock,
 )
 
+def gradDump(grad):
+    with open("gradDump.csv", "a") as f:
+        f.write(f'{torch.norm(grad)},')
+
 class ResidualTemporalBlock(nn.Module):
 
     def __init__(self, inp_channels, out_channels, embed_dim, horizon, kernel_size=5):
@@ -153,12 +157,12 @@ class SimpleValueFunction(nn.Module):
 
 
     def forward(self, x, cond, time, *args):
-        out = x[:, :, 2]
+        out = x[:, :, 2] + x[:, :, 3]
         #out = self.fc(out)
-        out = torch.sum(out)
+        out = torch.sum(-out)
         out = torch.reshape(out, (1,1))
 
-        return out * 3   
+        return out * 5   
 
 
 class InvValueFunction(nn.Module):
@@ -175,10 +179,15 @@ class InvValueFunction(nn.Module):
         super().__init__()
 
         self.fc =  nn.Linear(horizon*transition_dim, 1)
-
+        #self.fc.weight.register_hook(gradDump)
+        #self.fc.weight.register_hook(lambda grad: print('pippo'))
+        
 
     def forward(self, x, cond, time, *args):
         out = self.fc(x.flatten())
+        #weights = self.fc.weight.clone()
+        #weights.register_hook(gradDump)
+        #out = x.flatten() @ weights.T
         out = torch.reshape(out, (1,1))
 
         return out

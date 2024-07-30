@@ -1,7 +1,8 @@
 import torch
 import os
 
-def generate_trajectory(env, policy, args, starting_location = None):
+def generate_trajectory(env, policy, args, starting_location = None, 
+                        n_timesteps = None):
     if starting_location != None:
         observation = env.reset_to_location(starting_location)
     else:
@@ -12,8 +13,10 @@ def generate_trajectory(env, policy, args, starting_location = None):
     trajectory = []
 
     total_reward = 0
+    if n_timesteps == None:
+        n_timesteps = env.max_episode_steps
 
-    for t in range(env.max_episode_steps):
+    for t in range(n_timesteps):
 
         print(f't: {t}')
         conditions = {0: observation}
@@ -41,8 +44,8 @@ def generate_trajectory(env, policy, args, starting_location = None):
 
 
 
-def load_exp_trajectories(n_trajectories = None):
-    trajectory_files = os.listdir('exp_trajectories')
+def load_exp_trajectories(n_trajectories = None, folder='exp_trajectories'):
+    trajectory_files = os.listdir(folder)
     trajectory_files = [l for l in trajectory_files if l[-3:] == '.pt']
     n_files = len(trajectory_files)
     

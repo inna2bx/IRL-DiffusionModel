@@ -21,12 +21,15 @@ class GuidedPolicy:
         self.sample_kwargs = sample_kwargs
 
     def __call__(self, conditions, batch_size=1, 
-                 verbose=True, return_tensor = False):
+                 verbose=True, return_tensor = False, no_grad_diff_steps = 0):
         conditions = {k: self.preprocess_fn(v) for k, v in conditions.items()}
         conditions = self._format_conditions(conditions, batch_size)
 
         ## run reverse diffusion process
-        samples = self.diffusion_model(conditions, guide=self.guide, verbose=verbose, **self.sample_kwargs)
+        samples = self.diffusion_model(conditions, guide=self.guide, 
+                                       verbose=verbose, 
+                                       no_grad_diff_steps=no_grad_diff_steps,  
+                                       **self.sample_kwargs)
 
         # samples.trajectories.register_hook(lambda grad: print(f'test 2: {grad}'))
 

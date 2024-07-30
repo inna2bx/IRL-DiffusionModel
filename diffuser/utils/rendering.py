@@ -3,7 +3,7 @@ import numpy as np
 import einops
 import imageio
 import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap
+from matplotlib.colors import ListedColormap, Normalize
 import gym
 import mujoco_py as mjc
 import warnings
@@ -318,8 +318,16 @@ class MazeRenderer:
         images = einops.rearrange(images,
             '(nrow ncol) H W C -> (nrow H) (ncol W) C', nrow=nrow, ncol=ncol)
         #imageio.imsave(savepath, images)
-        plt.imshow(images, interpolation='nearest')
-        plt.savefig(savepath,
+
+        fig, ax = plt.subplots()
+        cax = ax.imshow(images, interpolation='nearest')
+        cax.axes.get_xaxis().set_visible(False)
+        cax.axes.get_yaxis().set_visible(False)
+        # Add colorbar, make sure to specify tick locations to match desired ticklabels
+        norm_map=Normalize(vmin=0, vmax=1)
+        cbar = fig.colorbar(plt.cm.ScalarMappable(norm=norm_map, cmap='jet_r'), ticks=[0, 1])
+        cbar.ax.set_yticklabels(['End', 'Start'])  # vertically oriented colorbar
+        fig.savefig(savepath,
                     bbox_inches='tight',
                     dpi=400,
                     transparent=True)

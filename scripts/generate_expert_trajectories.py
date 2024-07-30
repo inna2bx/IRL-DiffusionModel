@@ -14,7 +14,7 @@ import diffuser.utils.trajectory as trajectory
 
 NUM_EXP_TRAJECTORY = 64
 
-FOLDER = 'exp_trajectories'
+FOLDER = 'exp_trajectories_mixed'
 
 class Parser(utils.Parser):
     dataset: str = 'maze2d-umaze-v1'
@@ -23,9 +23,6 @@ class Parser(utils.Parser):
 #---------------------------------- setup ----------------------------------#
 
 args = Parser().parse_args('inv')
-
-
-# logger = utils.Logger(args)
 
 env = datasets.load_environment(args.dataset)
 #---------------------------------- loading ----------------------------------#
@@ -67,6 +64,6 @@ policy = policy_config()
 
 for idx in range(NUM_EXP_TRAJECTORY):
     print(f'---------------------- {idx} ----------------------')
-    exp_rollout, exp_trajectory = trajectory.generate_trajectory(env, policy, args)
+    exp_rollout, exp_trajectory = trajectory.generate_trajectory(env, policy, args, starting_location = (1.5, 3))
     torch.save(exp_trajectory, f'{FOLDER}/idx_{idx}.pt')
-    renderer.composite(f'{FOLDER}/idx_{idx}_rollout.png', np.array(exp_rollout)[None], ncol=1)
+    renderer.composite(f'{FOLDER}/idx_{idx}_rollout.pdf', np.array(exp_rollout)[None], ncol=1)
