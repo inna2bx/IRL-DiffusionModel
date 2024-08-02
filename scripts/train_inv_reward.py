@@ -2,7 +2,6 @@ import json
 import numpy as np
 from os.path import join
 import os
-import pdb
 import torch
 import time
 
@@ -34,13 +33,13 @@ class Parser(utils.Parser):
 
 args = Parser().parse_args('inv')
 
-TRAJ_STEP_SIZE = 30
+TRAJ_STEP_SIZE = 10
 
-N_EPOCHS = 1
+N_EPOCHS = 500
 
-GAMMA_LOSS = 0.8
+GAMMA_LOSS = 0.7
 
-PROFILING = True
+PROFILING = False
 
 env = datasets.load_environment(args.dataset)
 #---------------------------------- loading ----------------------------------#
@@ -100,6 +99,9 @@ loss_weight = torch.pow(loss_weight, exponents)
 
 losses = []
 
+if not os.path.exists(join(args.savepath, 'rollouts')):
+        os.makedirs(join(args.savepath, 'rollouts'))
+
 if PROFILING:
     epoch_times = []
     iteration_times = []
@@ -139,7 +141,7 @@ for epoch in range(N_EPOCHS):
                 if PROFILING:
                     sampling_time_start = time.time()
 
-                _, _, sampled_trajectory = inv_policy(conditions, batch_size=args.batch_size, no_grad_diff_steps=40, return_tensor = True)
+                _, _, sampled_trajectory = inv_policy(conditions, batch_size=args.batch_size, no_grad_diff_steps=0, return_tensor = True)
                 
                 if PROFILING:
                     sampling_time_end = time.time()
@@ -182,6 +184,7 @@ for epoch in range(N_EPOCHS):
 
 
 plot_loss(losses)
+np.save(join(args.savepath, 'losses.npy'), np.array(losses, dtype=object), allow_pickle=True)
 torch.save(inv_guide.state_dict(), join(args.savepath, 'model_weights.pth'))
 
 
@@ -215,13 +218,13 @@ if PROFILING:
         f.write(report_str)
 
 rollout, _ = generate_trajectory(env, inv_policy, args, starting_location=(1,1))
-
-renderer.composite(join(args.savepath, 'rollout_inv_1_1.pdf'), np.array(rollout)[None], ncol=1)
+np.save(join(args.savepath, 'rollouts/rollout_inv_1_1.npy'), np.array(rollout)[None])
+renderer.composite(join(args.savepath, 'rollouts/rollout_inv_1_1.pdf'), np.array(rollout)[None], ncol=1)
 
 rollout, _ = generate_trajectory(env, inv_policy, args, starting_location=(3,1))
-
-renderer.composite(join(args.savepath, 'rollout_inv_3_1.pdf'), np.array(rollout)[None], ncol=1)
+np.save(join(args.savepath, 'rollouts/rollout_inv_3_1.npy'), np.array(rollout)[None])
+renderer.composite(join(args.savepath, 'rollouts/rollout_inv_3_1.pdf'), np.array(rollout)[None], ncol=1)
 
 rollout, _ = generate_trajectory(env, inv_policy, args, starting_location=(2,3))
-
-renderer.composite(join(args.savepath, 'rollout_inv_2_3.pdf'), np.array(rollout)[None], ncol=1)
+np.save(join(args.savepath, 'rollouts/rollout_inv_2_3.npy'), np.array(rollout)[None])
+renderer.composite(join(args.savepath, 'rollouts/rollout_inv_2_3.pdf'), np.array(rollout)[None], ncol=1)

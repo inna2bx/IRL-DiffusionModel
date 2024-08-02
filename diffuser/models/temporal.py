@@ -159,7 +159,7 @@ class SimpleValueFunction(nn.Module):
     def forward(self, x, cond, time, *args):
         out = x[:, :, 2] + x[:, :, 3]
         #out = self.fc(out)
-        out = torch.sum(-out)
+        out = torch.sum(out)
         out = torch.reshape(out, (1,1))
 
         return out * 5   
