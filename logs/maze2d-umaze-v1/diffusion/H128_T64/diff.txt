@@ -1,0 +1,51 @@
+diff --git a/config/maze2d.py b/config/maze2d.py
+index 630141a..5804b42 100644
+--- a/config/maze2d.py
++++ b/config/maze2d.py
+@@ -49,7 +49,7 @@ base = {
+         'preprocess_fns': ['maze2d_set_terminals'],
+         'clip_denoised': True,
+         'use_padding': False,
+-        'max_path_length': 4000,
++        'max_path_length': 4000,#40000
+ 
+         ## serialization
+         'logbase': 'logs',
+@@ -57,9 +57,9 @@ base = {
+         'exp_name': watch(diffusion_args_to_watch),
+ 
+         ## training
+-        'n_steps_per_epoch': 10000,
++        'n_steps_per_epoch': 1000, #1000
+         'loss_type': 'l2',
+-        'n_train_steps': 2e6,
++        'n_train_steps': 15 * 6 * 1000, #2e6,
+         'batch_size': 32,
+         'learning_rate': 2e-4,
+         'gradient_accumulate_every': 2,
+diff --git a/diffuser/guides/policies.py b/diffuser/guides/policies.py
+index c6a460c..ee535cc 100644
+--- a/diffuser/guides/policies.py
++++ b/diffuser/guides/policies.py
+@@ -28,7 +28,7 @@ class Policy:
+             conditions,
+             'observations',
+         )
+-        conditions = utils.to_torch(conditions, dtype=torch.float32, device='cuda:0')
++        conditions = utils.to_torch(conditions, dtype=torch.float32, device='cpu')
+         conditions = utils.apply_dict(
+             einops.repeat,
+             conditions,
+diff --git a/scripts/plan_maze2d.py b/scripts/plan_maze2d.py
+index d9920e4..18a48f7 100644
+--- a/scripts/plan_maze2d.py
++++ b/scripts/plan_maze2d.py
+@@ -31,7 +31,7 @@ renderer = diffusion_experiment.renderer
+ policy = Policy(diffusion, dataset.normalizer)
+ 
+ #---------------------------------- main loop ----------------------------------#
+-
++print(env)
+ observation = env.reset()
+ 
+ if args.conditional:
