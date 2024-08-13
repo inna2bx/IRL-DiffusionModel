@@ -93,7 +93,9 @@ trainer_config = utils.Config(
 #-------------------------------- instantiate --------------------------------#
 #-----------------------------------------------------------------------------#
 
-model = model_config()
+model = model_config() #TemportaUnet
+
+model.to(args.device)
 
 diffusion = diffusion_config(model)
 

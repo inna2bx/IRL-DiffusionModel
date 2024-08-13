@@ -49,7 +49,7 @@ base = {
         'preprocess_fns': ['maze2d_set_terminals'],
         'clip_denoised': True,
         'use_padding': False,
-        'max_path_length': 4000,#40000
+        'max_path_length': 4000,
 
         ## serialization
         'logbase': 'logs',
@@ -59,7 +59,7 @@ base = {
         ## training
         'n_steps_per_epoch': 1000,
         'loss_type': 'l2',
-        'n_train_steps': 15 * 6 * 1000, #2e6,
+        'n_train_steps': 2000, #15 * 6 * 1000, #2e6,
         'batch_size': 32,
         'learning_rate': 2e-4,
         'gradient_accumulate_every': 2,
@@ -71,7 +71,7 @@ base = {
         'n_reference': 50,
         'n_samples': 10,
         'bucket': None,
-        'device': 'cuda',
+        'device': 'cpu',
     },
 
     'values': {
@@ -114,7 +114,7 @@ base = {
         'save_parallel': False,
         'n_reference': 8,
         'bucket': None,
-        'device': 'cuda',
+        'device': 'cpu',
         'seed': None,
     },
 
@@ -165,7 +165,7 @@ base = {
         'policy': 'sampling.GuidedPolicy',
         'batch_size': 1,
         'preprocess_fns': [],
-        'device': 'cpu',
+        'device': 'cuda:0',
         'seed': None,
 
         ## sample_kwargs

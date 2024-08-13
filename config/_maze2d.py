@@ -71,12 +71,12 @@ base = {
         'n_reference': 50,
         'n_samples': 10,
         'bucket': None,
-        'device': 'cuda',
+        'device': 'cpu',
     },
 
     'plan': {
         'batch_size': 1,
-        'device': 'cuda',
+        'device': 'cpu',
         'seed': None,
 
         ## diffusion model

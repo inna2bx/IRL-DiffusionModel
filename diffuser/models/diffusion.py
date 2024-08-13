@@ -22,7 +22,6 @@ def default_sample_fn(model, x, cond, t):
     # no noise when t == 0
     noise = torch.randn_like(x)
     noise[t == 0] = 0
-
     values = torch.zeros(len(x), device=x.device)
     return model_mean + model_std * noise, values
 

@@ -23,16 +23,14 @@ args = Parser().parse_args('plan')
 env = datasets.load_environment(args.dataset)
 #---------------------------------- loading ----------------------------------#
 
-#diffusion_experiment = utils.load_diffusion(args.logbase, args.dataset, args.diffusion_loadpath, epoch=args.diffusion_epoch)
-
 diffusion_experiment = utils.load_diffusion(
     args.loadbase, args.dataset, args.diffusion_loadpath,
-    epoch=args.diffusion_epoch, seed=args.seed,
+    epoch=args.diffusion_epoch, seed=args.seed, device=args.device
 )
 
 value_experiment = utils.load_diffusion(
     args.loadbase, args.dataset, args.value_loadpath,
-    epoch=args.value_epoch, seed=args.seed,
+    epoch=args.value_epoch, seed=args.seed, device=args.device
 )
 
 diffusion = diffusion_experiment.ema

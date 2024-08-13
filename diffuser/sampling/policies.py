@@ -23,7 +23,8 @@ class GuidedPolicy:
     def __call__(self, conditions, batch_size=1, 
                  verbose=True, return_tensor = False, no_grad_diff_steps = 0):
         conditions = {k: self.preprocess_fn(v) for k, v in conditions.items()}
-        conditions = self._format_conditions(conditions, batch_size)
+        conditions = self._format_conditions(conditions, batch_size, 
+                                             device=self.device)
 
         ## run reverse diffusion process
         samples = self.diffusion_model(conditions, guide=self.guide, 
@@ -56,13 +57,15 @@ class GuidedPolicy:
         parameters = list(self.diffusion_model.parameters())
         return parameters[0].device
 
-    def _format_conditions(self, conditions, batch_size):
+    def _format_conditions(self, conditions, batch_size, device):
         conditions = utils.apply_dict(
             self.normalizer.normalize,
             conditions,
             'observations',
         )
-        conditions = utils.to_torch(conditions, dtype=torch.float32, device='cpu')
+        conditions = utils.to_torch(conditions, dtype=torch.float32, 
+                                    device=device)
+        
         conditions = utils.apply_dict(
             einops.repeat,
             conditions,
