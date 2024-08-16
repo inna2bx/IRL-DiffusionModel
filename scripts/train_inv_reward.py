@@ -1,10 +1,11 @@
-import json
 import numpy as np
 from os.path import join
 import os
-import torch
 import time
+import random
+import wandb
 
+import torch
 import matplotlib.pyplot as plt
 
 import diffuser.datasets as datasets
@@ -24,6 +25,12 @@ def plot_loss(loss):
                         dpi=400,
                         transparent=True)
 
+def loss_function(exp_trajectory, sampled_trajectories, weights):
+    n_batches = sampled_trajectory.shape[0]
+    exp_trajectory_batch = exp_trajectory.repeat(n_batches, 1, 1)
+    loss = torch.sum(weights*torch.square(exp_trajectory_batch - sampled_trajectories)) 
+    normalised_loss = loss / (torch.sum(weights) * 6 * n_batches)
+    return normalised_loss
 
 class Parser(utils.Parser):
     dataset: str = 'maze2d-umaze-v1'
@@ -33,11 +40,12 @@ class Parser(utils.Parser):
 
 args = Parser().parse_args('inv')
 
-TRAJ_STEP_SIZE = 10
-
-N_EPOCHS = 500
-
-GAMMA_LOSS = 0.7
+wandb.init(
+    # set the wandb project where this run will be logged
+    project='IRL with Diffuser',
+    name = args.exp_name
+    # track hyperparameters and run metadata
+)
 
 PROFILING = False
 
@@ -87,12 +95,12 @@ inv_policy = inv_policy_config()
 
 
 #---------------------------------- main loop ----------------------------------#
-exp_trajectories = load_exp_trajectories(n_trajectories=2)
+exp_trajectories = load_exp_trajectories(n_trajectories=args.n_expert_traj)
 
 
 
 optimiser = torch.optim.Adam(inv_guide.parameters(), lr=2e-4)
-loss_weight = torch.tensor([GAMMA_LOSS]).repeat(args.horizon)
+loss_weight = torch.tensor([args.gamma_loss]).repeat(args.horizon)
 exponents = torch.arange(args.horizon)
 loss_weight = torch.pow(loss_weight, exponents)
 
@@ -110,67 +118,82 @@ if PROFILING:
         os.makedirs(join(args.savepath, 'times'))
 
 
-for epoch in range(N_EPOCHS):
+for epoch in range(args.n_epochs):
     if PROFILING:
         epoch_time_start = time.time()
     
     print(f'epoch: {epoch}')
     epoch_loss = 0
+    epoch_loss_n = 0
+    optimiser.zero_grad()
     for exp_trajectory in exp_trajectories:
         exp_trajectory_len = exp_trajectory.shape[1]
-        for t in range(exp_trajectory_len):
-            if t % TRAJ_STEP_SIZE == 0:
-                if PROFILING:
-                    iteration_time_start = time.time()
+        first_t = random.randint(0, args.traj_step_size)
+        for t in range(first_t, exp_trajectory_len, args.traj_step_size):
+            if PROFILING:
+                iteration_time_start = time.time()
 
-                optimiser.zero_grad()
+            
 
-                index_end = t+args.horizon
-                if index_end < exp_trajectory_len:
-                    clipped_exp_trajectory = exp_trajectory[:,t:index_end, :]
-                else:
-                    clipped_exp_trajectory = exp_trajectory[:,t:, :]
+            index_end = t+args.horizon
+            if index_end < exp_trajectory_len:
+                clipped_exp_trajectory = exp_trajectory[:,t:index_end, :]
+            else:
+                clipped_exp_trajectory = exp_trajectory[:,t:, :]
 
-                clipped_exp_trajectory_len = clipped_exp_trajectory.shape[1]
-                
-                first_observation = clipped_exp_trajectory[0, 0, :4].reshape((4)).detach().numpy()
+            clipped_exp_trajectory_len = clipped_exp_trajectory.shape[1]
+            
+            first_observation = clipped_exp_trajectory[0, 0, :4].reshape((4)).detach().numpy()
 
-                conditions = {0: first_observation}
+            conditions = {0: first_observation}
 
-                if PROFILING:
-                    sampling_time_start = time.time()
+            if PROFILING:
+                sampling_time_start = time.time()
 
-                _, _, sampled_trajectory = inv_policy(conditions, batch_size=args.batch_size, no_grad_diff_steps=0, return_tensor = True)
-                
-                if PROFILING:
-                    sampling_time_end = time.time()
-                    sampling_times.append(sampling_time_end - sampling_time_start)
-                
-                clipped_sampled_trajectory = sampled_trajectory[:,:clipped_exp_trajectory_len,:]
-                clipped_loss_weight = loss_weight[:clipped_exp_trajectory_len]
+            _, _, sampled_trajectory = inv_policy(conditions, 
+                                                    batch_size=args.batch_size, 
+                                                    no_grad_diff_steps=args.no_grad_diff_steps, 
+                                                    fast_sampling_batch_size = args.fast_sampling_batch_size, 
+                                                    return_tensor = True)
+            
+            
+            if PROFILING:
+                sampling_time_end = time.time()
+                sampling_times.append(sampling_time_end - sampling_time_start)
+            
+            clipped_sampled_trajectory = sampled_trajectory[:,:clipped_exp_trajectory_len,:]
+            clipped_loss_weight = loss_weight[:clipped_exp_trajectory_len]
 
-                clipped_loss_weight = clipped_loss_weight[None,:,None]
+            clipped_loss_weight = clipped_loss_weight[None,:,None]
 
-                loss = torch.sum(clipped_loss_weight*torch.square(clipped_exp_trajectory - clipped_sampled_trajectory)) / (torch.sum(clipped_loss_weight) * 6)
+            loss = loss_function(clipped_exp_trajectory, 
+                                    clipped_sampled_trajectory, 
+                                    clipped_loss_weight)
 
-                if PROFILING:
-                    backprop_time_start = time.time()
-                
-                loss.backward()
-                optimiser.step()
-                
-                if PROFILING:
-                    backprop_time_end = time.time()
-                    backprop_times.append(backprop_time_end - backprop_time_start)
-                
-                epoch_loss += loss.detach()
+            if PROFILING:
+                backprop_time_start = time.time()
+            
+            loss.backward()
+            
+            
+            if PROFILING:
+                backprop_time_end = time.time()
+                backprop_times.append(backprop_time_end - backprop_time_start)
+            
+            
+            epoch_loss = (loss.detach() + epoch_loss * epoch_loss_n) / (epoch_loss_n + 1)
+            epoch_loss_n += 1 
 
-                if PROFILING:
-                    iteration_time_end = time.time()
-                    iteration_times.append(iteration_time_end - iteration_time_start)
+            if PROFILING:
+                iteration_time_end = time.time()
+                iteration_times.append(iteration_time_end - iteration_time_start)
     
+    optimiser.step()
+    
+    wandb.log({"loss": epoch_loss})
     print(epoch_loss)
     losses.append(epoch_loss)
+
 
     if PROFILING:
         epoch_time_end = time.time()
@@ -182,6 +205,7 @@ for epoch in range(N_EPOCHS):
                    join(args.savepath, 'model_weights.pth'))
 
 
+wandb.finish()
 plot_loss(losses)
 np.save(join(args.savepath, 'losses.npy'), np.array(losses, dtype=object), allow_pickle=True)
 torch.save(inv_guide.state_dict(), join(args.savepath, 'model_weights.pth'))

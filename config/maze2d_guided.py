@@ -59,7 +59,7 @@ base = {
         ## training
         'n_steps_per_epoch': 1000,
         'loss_type': 'l2',
-        'n_train_steps': 2000, #15 * 6 * 1000, #2e6,
+        'n_train_steps': 15 * 6 * 1000, #2e6,
         'batch_size': 32,
         'learning_rate': 2e-4,
         'gradient_accumulate_every': 2,
@@ -179,11 +179,24 @@ base = {
         'n_diffusion_steps': 256,
         'normalizer': 'LimitsNormalizer',
 
+        ## IRL
+        'n_epochs': 500,
+        'gamma_loss': 0.7,
+        'n_expert_traj':2,
+
+        ## stop gradient
+        'no_grad_diff_steps':0,
+
+        ## fast sampling
+        'traj_step_size':10,
+        'fast_sampling_batch_size': 1, 
+
+
         ## serialization
         'loadbase': None,
         'vis_freq': 10,
         'logbase': 'logs',
-        'prefix': 'plans/release',
+        'prefix': 'f:irl/release',
         'exp_name': watch(plan_args_to_watch),
         'suffix': '0',
 

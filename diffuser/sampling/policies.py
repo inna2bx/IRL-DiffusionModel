@@ -1,7 +1,6 @@
 from collections import namedtuple
 import torch
 import einops
-import pdb
 
 import diffuser.utils as utils
 from diffuser.datasets.preprocessing import get_policy_preprocess_fn
@@ -21,7 +20,8 @@ class GuidedPolicy:
         self.sample_kwargs = sample_kwargs
 
     def __call__(self, conditions, batch_size=1, 
-                 verbose=True, return_tensor = False, no_grad_diff_steps = 0):
+                 verbose=True, return_tensor = False, no_grad_diff_steps = 0, 
+                 fast_sampling_batch_size = 0):
         conditions = {k: self.preprocess_fn(v) for k, v in conditions.items()}
         conditions = self._format_conditions(conditions, batch_size, 
                                              device=self.device)
@@ -29,7 +29,8 @@ class GuidedPolicy:
         ## run reverse diffusion process
         samples = self.diffusion_model(conditions, guide=self.guide, 
                                        verbose=verbose, 
-                                       no_grad_diff_steps=no_grad_diff_steps,  
+                                       no_grad_diff_steps=no_grad_diff_steps,
+                                       fast_sampling_batch_size=fast_sampling_batch_size,  
                                        **self.sample_kwargs)
 
         # samples.trajectories.register_hook(lambda grad: print(f'test 2: {grad}'))
