@@ -2,7 +2,7 @@ import torch
 import os
 
 def generate_trajectory(env, policy, args, starting_location = None, 
-                        n_timesteps = None):
+                        n_timesteps = None, verbose = False):
     if starting_location != None:
         observation = env.reset_to_location(starting_location)
     else:
@@ -21,7 +21,7 @@ def generate_trajectory(env, policy, args, starting_location = None,
         print(f't: {t}')
         conditions = {0: observation}
         
-        action, _ = policy(conditions, batch_size=args.batch_size, verbose=args.verbose)
+        action, _ = policy(conditions, batch_size=args.batch_size, verbose=verbose)
 
         next_observation, reward, terminal, _ = env.step(action)
         total_reward += reward

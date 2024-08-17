@@ -125,7 +125,7 @@ for epoch in range(args.n_epochs):
     print(f'epoch: {epoch}')
     epoch_loss = 0
     epoch_loss_n = 0
-    optimiser.zero_grad()
+    
     for exp_trajectory in exp_trajectories:
         exp_trajectory_len = exp_trajectory.shape[1]
         first_t = random.randint(0, args.traj_step_size)
@@ -133,7 +133,7 @@ for epoch in range(args.n_epochs):
             if PROFILING:
                 iteration_time_start = time.time()
 
-            
+            optimiser.zero_grad()
 
             index_end = t+args.horizon
             if index_end < exp_trajectory_len:
@@ -174,6 +174,7 @@ for epoch in range(args.n_epochs):
                 backprop_time_start = time.time()
             
             loss.backward()
+            optimiser.step()
             
             
             if PROFILING:
@@ -188,7 +189,7 @@ for epoch in range(args.n_epochs):
                 iteration_time_end = time.time()
                 iteration_times.append(iteration_time_end - iteration_time_start)
     
-    optimiser.step()
+    
     
     wandb.log({"loss": epoch_loss})
     print(epoch_loss)
@@ -208,7 +209,7 @@ for epoch in range(args.n_epochs):
 wandb.finish()
 plot_loss(losses)
 np.save(join(args.savepath, 'losses.npy'), np.array(losses, dtype=object), allow_pickle=True)
-torch.save(inv_guide.state_dict(), join(args.savepath, 'model_weights.pth'))
+torch.save(inv_value_function.state_dict(), join(args.savepath, 'model_weights.pth'))
 
 
 if PROFILING:

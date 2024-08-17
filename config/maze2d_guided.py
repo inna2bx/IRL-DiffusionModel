@@ -76,7 +76,6 @@ base = {
 
     'values': {
         'model': 'models.SimpleValueFunction',
-        #'model': 'models.ValueFunction',
         'diffusion': 'models.ValueDiffusion',
         'horizon': 256,
         'n_diffusion_steps': 256,
@@ -165,7 +164,7 @@ base = {
         'policy': 'sampling.GuidedPolicy',
         'batch_size': 1,
         'preprocess_fns': [],
-        'device': 'cuda:0',
+        'device': 'cpu',
         'seed': None,
 
         ## sample_kwargs
@@ -217,6 +216,64 @@ base = {
         'dim_mults': (1, 4, 8),
     },
 
+    'metrics' : {
+        'guide': 'sampling.ValueGuide',
+        'policy': 'sampling.GuidedPolicy',
+        'batch_size': 1,
+        'preprocess_fns': [],
+        'device': 'cpu',
+        'seed': None,
+
+        ## sample_kwargs
+        'n_guide_steps': 2,
+        'scale':0.1,
+        't_stopgrad': 2,
+        'scale_grad_by_std': True,
+
+        ## diffusion model
+        'horizon': 256,
+        'n_diffusion_steps': 256,
+        'normalizer': 'LimitsNormalizer',
+
+        ## IRL
+        'n_epochs': 500,
+        'gamma_loss': 0.7,
+        'n_expert_traj':2,
+
+        ## stop gradient
+        'no_grad_diff_steps':0,
+
+        ## fast sampling
+        'traj_step_size':10,
+        'fast_sampling_batch_size': 1, 
+
+
+        ## serialization
+        'loadbase': None,
+        'vis_freq': 10,
+        'logbase': 'logs',
+        'prefix': 'f:metrics/release',
+        'exp_name': watch(plan_args_to_watch),
+        'suffix': '0',
+
+        'conditional': False,
+
+        ## value function
+        'discount': 0.997,
+
+        ## loading
+        'diffusion_loadpath': 'f:diffusion/H{horizon}_T{n_diffusion_steps}',
+        'value_loadpath': 'f:values/defaults_H{horizon}_T{n_diffusion_steps}',
+        
+        'diffusion_epoch': 'latest',
+        'value_epoch': 'latest',
+
+        'verbose':True,
+
+        'dim_mults': (1, 4, 8),
+        'n_rollout' : 10,
+    },
+
 }
 
 #------------------------ overrides ------------------------#
@@ -243,6 +300,11 @@ maze2d_umaze_v1 = {
     },
 
     'inv': {
+        'horizon': 128,
+        'n_diffusion_steps': 64,
+    },
+
+    'metrics': {
         'horizon': 128,
         'n_diffusion_steps': 64,
     },
