@@ -2,6 +2,10 @@ from os.path import join
 import os
 import numpy as np
 import torch
+from gymnasium.spaces import Box
+
+from imitation.data.types import Trajectory
+from imitation.algorithms.bc import BC
 
 import diffuser.utils as utils
 import diffuser.datasets as datasets
@@ -10,7 +14,7 @@ from diffuser.guides.policies import Policy
 import diffuser.sampling as sampling
 
 from diffuser.models.temporal import InvValueFunction
-from diffuser.utils.trajectory import  generate_trajectory
+from diffuser.utils.trajectory import  generate_trajectory, load_exp_trajectories, generate_trajectory_generic_policy
 
 class Parser(utils.Parser):
     dataset: str = 'maze2d-umaze-v1'
@@ -30,6 +34,11 @@ def cumulative_reward_function(trajectory):
 ##--- Load Diffusers ---##
 
 env = datasets.load_environment(args.dataset)
+env_observation_space = Box(low=-np.inf, high=np.inf, shape=(1,4), dtype=np.float32)
+env_action_space = Box(low = -1.0, high= 1.0, shape=(1,2), dtype=np.float32)
+
+
+exp_trajectories = load_exp_trajectories(n_trajectories=args.n_expert_traj)
 
 diffusion_experiment = utils.load_diffusion(args.logbase, args.dataset, 
                                             args.diffusion_loadpath, 
@@ -143,5 +152,49 @@ for i in range(args.n_rollout):
     renderer.composite(join(args.savepath, f'{guided_diffuser_path}/rollout_{i}.pdf'), rollout, ncol=1)
     guided_diffuser_rewards[i] = cumulative_reward_function(rollout)
 
-print(f'{base_diffuser_rewards.mean()} +- {base_diffuser_rewards.std()}')
-print(f'{guided_diffuser_rewards.mean()} +- {guided_diffuser_rewards.std()}')
+
+##--- Transform expert trajectories to be used with imitation ---##
+
+im_expert_trajectories = []
+
+for traj in exp_trajectories:
+    traj = torch.squeeze(traj)
+    acts = traj[:-1, :2].numpy()
+    obs = traj[:, 2:].numpy()
+    im_traj = Trajectory(obs, acts, infos=None, terminal=True)
+    im_expert_trajectories.append(im_traj)
+
+
+##--- Behaviour Cloning ---##
+
+bc = BC(observation_space = env_observation_space, 
+        action_space = env_action_space, 
+        rng = np.random.default_rng(seed=42), 
+        demonstrations=im_expert_trajectories,)
+
+bc.train(n_epochs=200)
+
+bc_rewards = np.zeros(args.n_rollout)
+
+bc_path = 'rollouts/bc'
+if not os.path.exists(join(args.savepath, bc_path)):
+    os.makedirs(join(args.savepath, bc_path))
+
+for i in range(args.n_rollout):
+
+    rollout, _ = generate_trajectory_generic_policy(env, bc.policy, args)
+
+    rollout = np.array(rollout)[None]
+    bc_rewards[i] = cumulative_reward_function(rollout)
+
+    np.save(join(args.savepath, f'{bc_path}/rollout_{i}.npy'), rollout)
+    renderer.composite(join(args.savepath, f'{bc_path}/rollout_{i}.pdf'), rollout, ncol=1)
+    bc_rewards[i] = cumulative_reward_function(rollout)
+
+output_string = f'{base_diffuser_rewards.mean()} +- {base_diffuser_rewards.std()}'
+output_string += f'\n{guided_diffuser_rewards.mean()} +- {guided_diffuser_rewards.std()}'
+output_string += f'\n{bc_rewards.mean()} +- {bc_rewards.std()}'
+print(output_string)
+
+with open(join(args.savepath, 'metrics.txt'), 'w') as txt_file:
+    txt_file.write(output_string)
