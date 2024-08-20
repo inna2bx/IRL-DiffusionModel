@@ -36,7 +36,7 @@ def make_timesteps(batch_size, i, device):
     return t
 
 class GaussianDiffusion(nn.Module):
-    def __init__(self, model, horizon, observation_dim, action_dim, n_timesteps=1000,
+    def __init__(self, model, horizon, observation_dim, action_dim, device, n_timesteps=1000,
         loss_type='l1', clip_denoised=False, predict_epsilon=True,
         action_weight=1.0, loss_discount=1.0, loss_weights=None,
     ):
@@ -46,9 +46,12 @@ class GaussianDiffusion(nn.Module):
         self.action_dim = action_dim
         self.transition_dim = observation_dim + action_dim
         self.model = model
+        self.device = device
 
         betas = cosine_beta_schedule(n_timesteps)
+        betas.to(self.device)
         alphas = 1. - betas
+        alphas.to(self.device)
         alphas_cumprod = torch.cumprod(alphas, axis=0)
         alphas_cumprod_prev = torch.cat([torch.ones(1), alphas_cumprod[:-1]])
 
@@ -56,7 +59,9 @@ class GaussianDiffusion(nn.Module):
         self.clip_denoised = clip_denoised
         self.predict_epsilon = predict_epsilon
 
+        print(f'device betas: {betas.device}')
         self.register_buffer('betas', betas)
+        print(f'device betas registered in buffer:{self.betas.device}')
         self.register_buffer('alphas_cumprod', alphas_cumprod)
         self.register_buffer('alphas_cumprod_prev', alphas_cumprod_prev)
 
@@ -162,6 +167,7 @@ class GaussianDiffusion(nn.Module):
     def p_sample_loop(self, shape, cond, verbose=False, return_chain=False, sample_fn=default_sample_fn, 
                       no_grad_diff_steps = 0, **sample_kwargs):
         device = self.betas.device
+        print(f'device in p_sample_loop (from betas):{device}')
 
         batch_size = shape[0]
         x = torch.randn(shape, device=device)
@@ -213,7 +219,9 @@ class GaussianDiffusion(nn.Module):
     def q_sample(self, x_start, t, noise=None):
         if noise is None:
             noise = torch.randn_like(x_start)
-
+        print('\ndebug qsample')
+        print(self.sqrt_alphas_cumprod.get_device())
+        print(self.sqrt_one_minus_alphas_cumprod.get_device())
         sample = (
             extract(self.sqrt_alphas_cumprod, t, x_start.shape) * x_start +
             extract(self.sqrt_one_minus_alphas_cumprod, t, x_start.shape) * noise
@@ -241,7 +249,10 @@ class GaussianDiffusion(nn.Module):
 
     def loss(self, x, *args):
         batch_size = len(x)
+        print('debug loss')
+        print(x.get_device())
         t = torch.randint(0, self.n_timesteps, (batch_size,), device=x.device).long()
+        print(t.get_device())
         return self.p_losses(x, *args, t)
 
     def forward(self, cond, *args, **kwargs):

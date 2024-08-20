@@ -141,3 +141,5 @@ dmypy.json
 .pyre/
 
 logs/
+*/dif.txt
+logs/maze2d-umaze-v1/diffusion/H128_T64/diff.txt

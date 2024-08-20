@@ -44,7 +44,7 @@ def generate_trajectory(env, policy, args, starting_location = None,
 
 
 
-def load_exp_trajectories(n_trajectories = None, folder='exp_trajectories'):
+def load_exp_trajectories(n_trajectories = None, device = 'cpu', folder='exp_trajectories'):
     trajectory_files = os.listdir(folder)
     trajectory_files = [l for l in trajectory_files if l[-3:] == '.pt']
     n_files = len(trajectory_files)
@@ -55,6 +55,7 @@ def load_exp_trajectories(n_trajectories = None, folder='exp_trajectories'):
     exp_trajectories = []
     for file in trajectory_files:
         exp_trajectory = torch.load(f'exp_trajectories/{file}')
+        exp_trajectory.to(device)
         exp_trajectories.append(exp_trajectory)
     
     return exp_trajectories

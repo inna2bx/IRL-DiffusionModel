@@ -95,9 +95,7 @@ trainer_config = utils.Config(
 
 model = model_config() #TemportaUnet
 
-model.to(args.device)
-
-diffusion = diffusion_config(model)
+diffusion = diffusion_config(model, device=args.device)
 
 trainer = trainer_config(diffusion, dataset, renderer)
 

@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import einops
 from einops.layers.torch import Rearrange
-import pdb
+import traceback
 
 import diffuser.utils as utils
 
@@ -69,6 +69,11 @@ class Conv1dBlock(nn.Module):
 
 def extract(a, t, x_shape):
     b, *_ = t.shape
+    print('debug extract')
+    print(a.get_device())
+    print(t.get_device())
+    # assert a.get_device() != -1
+    # assert t.get_device() != -1
     out = a.gather(-1, t)
     return out.reshape(b, *((1,) * (len(x_shape) - 1)))
 

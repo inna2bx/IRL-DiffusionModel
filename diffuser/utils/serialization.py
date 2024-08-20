@@ -47,7 +47,7 @@ def load_diffusion(*loadpath, epoch='latest', device='cpu', seed=None):
     dataset = dataset_config(seed=seed)
     renderer = render_config()
     model = model_config()
-    diffusion = diffusion_config(model)
+    diffusion = diffusion_config(model, device = device)
     trainer = trainer_config(diffusion, dataset, renderer)
 
     if epoch == 'latest':

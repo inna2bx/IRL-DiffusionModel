@@ -33,9 +33,9 @@ class Parser(utils.Parser):
 
 args = Parser().parse_args('inv')
 
-TRAJ_STEP_SIZE = 10
+print(f'device:{args.device}')
 
-N_EPOCHS = 500
+TRAJ_STEP_SIZE = 10
 
 GAMMA_LOSS = 0.7
 
@@ -63,6 +63,9 @@ inv_value_function = InvValueFunction(
     cond_dim=observation_dim,
     dim_mults=args.dim_mults,)
 
+inv_value_function.to(args.device)
+print(f'inv_nn_device:{next(inv_value_function.parameters()).device}')
+
 inv_guide_config = utils.Config(args.guide, 
                                 model=inv_value_function, 
                                 verbose=False)
@@ -87,14 +90,14 @@ inv_policy = inv_policy_config()
 
 
 #---------------------------------- main loop ----------------------------------#
-exp_trajectories = load_exp_trajectories(n_trajectories=2)
+exp_trajectories = load_exp_trajectories(n_trajectories=2, device=args.device)
 
 
 
 optimiser = torch.optim.Adam(inv_guide.parameters(), lr=2e-4)
 loss_weight = torch.tensor([GAMMA_LOSS]).repeat(args.horizon)
 exponents = torch.arange(args.horizon)
-loss_weight = torch.pow(loss_weight, exponents)
+loss_weight = torch.pow(loss_weight, exponents).to(args.device)
 
 losses = []
 
@@ -109,8 +112,9 @@ if PROFILING:
     if not os.path.exists(join(args.savepath, 'times')):
         os.makedirs(join(args.savepath, 'times'))
 
+print(f'diffusion device:{diffusion.device}')
 
-for epoch in range(N_EPOCHS):
+for epoch in range(args.n_epochs):
     if PROFILING:
         epoch_time_start = time.time()
     
@@ -158,6 +162,9 @@ for epoch in range(N_EPOCHS):
                 
                 loss.backward()
                 optimiser.step()
+
+                #to test if the gpu code is working we need just one iteration
+                assert False
                 
                 if PROFILING:
                     backprop_time_end = time.time()

@@ -71,7 +71,7 @@ base = {
         'n_reference': 50,
         'n_samples': 10,
         'bucket': None,
-        'device': 'cpu',
+        'device': 'cuda',
     },
 
     'values': {
@@ -114,7 +114,7 @@ base = {
         'save_parallel': False,
         'n_reference': 8,
         'bucket': None,
-        'device': 'cpu',
+        'device': 'cuda',
         'seed': None,
     },
 
@@ -123,7 +123,7 @@ base = {
         'policy': 'sampling.GuidedPolicy',
         'batch_size': 1,
         'preprocess_fns': [],
-        'device': 'cpu',
+        'device': 'cuda',
         'seed': None,
 
         ## sample_kwargs
@@ -165,7 +165,7 @@ base = {
         'policy': 'sampling.GuidedPolicy',
         'batch_size': 1,
         'preprocess_fns': [],
-        'device': 'cuda:0',
+        'device': 'cuda',
         'seed': None,
 
         ## sample_kwargs
@@ -178,6 +178,9 @@ base = {
         'horizon': 256,
         'n_diffusion_steps': 256,
         'normalizer': 'LimitsNormalizer',
+
+        ## IRL
+        'n_epochs': 500,
 
         ## serialization
         'loadbase': None,
