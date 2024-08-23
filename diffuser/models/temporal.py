@@ -177,18 +177,20 @@ class InvValueFunction(nn.Module):
         dim_mults=(1, 2, 4, 8),
     ):
         super().__init__()
-
-        self.fc =  nn.Linear(horizon*transition_dim, 1)
+        self.traj_dim = horizon*transition_dim
+        self.fc =  nn.Linear(self.traj_dim, 1)
         #self.fc.weight.register_hook(gradDump)
         #self.fc.weight.register_hook(lambda grad: print('pippo'))
         
 
     def forward(self, x, cond, time, *args):
-        out = self.fc(x.flatten())
+        n_batches = x.shape[0]
+        x = x.reshape(n_batches, self.traj_dim)
+        out = self.fc(x)
         #weights = self.fc.weight.clone()
         #weights.register_hook(gradDump)
         #out = x.flatten() @ weights.T
-        out = torch.reshape(out, (1,1))
+        out = torch.reshape(out, (n_batches,1))
 
         return out
 

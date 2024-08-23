@@ -16,8 +16,6 @@ class Parser(utils.Parser):
 
 args = Parser().parse_args('plan')
 
-# logger = utils.Logger(args)
-
 env = datasets.load_environment(args.dataset)
 
 #---------------------------------- loading ----------------------------------#
@@ -32,7 +30,6 @@ renderer = diffusion_experiment.renderer
 policy = Policy(diffusion, dataset.normalizer)
 
 #---------------------------------- main loop ----------------------------------#
-print(env)
 observation = env.reset()
 
 if args.conditional:

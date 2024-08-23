@@ -111,7 +111,10 @@ class Parser(Tap):
                 except:
                     print(f'[ utils/setup ] Warning: could not parse {val} (old: {old_val}, {old_type}), using str')
             else:
-                val = old_type(val)
+                if key != 'exp_name':
+                    val = old_type(val)
+                else:
+                    val = str(val)
             setattr(args, key, val)
             self._dict[key] = val
 

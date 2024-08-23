@@ -26,7 +26,6 @@ def n_step_guided_p_sample(
         if stop_grad:
             grad = grad.detach()
 
-        
         x = x + scale * grad
         
         x = apply_conditioning(x, cond, model.action_dim)

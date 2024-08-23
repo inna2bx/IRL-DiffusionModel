@@ -2,7 +2,7 @@ import torch
 import os
 
 def generate_trajectory(env, policy, args, starting_location = None, 
-                        n_timesteps = None):
+                        n_timesteps = None, verbose = False):
     if starting_location != None:
         observation = env.reset_to_location(starting_location)
     else:
@@ -17,11 +17,9 @@ def generate_trajectory(env, policy, args, starting_location = None,
         n_timesteps = env.max_episode_steps
 
     for t in range(n_timesteps):
-
-        print(f't: {t}')
         conditions = {0: observation}
         
-        action, _ = policy(conditions, batch_size=args.batch_size, verbose=args.verbose)
+        action, _ = policy(conditions, batch_size=args.batch_size, verbose=verbose)
 
         next_observation, reward, terminal, _ = env.step(action)
         total_reward += reward
@@ -42,6 +40,42 @@ def generate_trajectory(env, policy, args, starting_location = None,
 
     return rollout, trajectory
 
+
+def generate_trajectory_generic_policy(env, policy, args, starting_location = None, 
+                        n_timesteps = None, verbose = False):
+    if starting_location != None:
+        observation = env.reset_to_location(starting_location)
+    else:
+        observation = env.reset()
+    
+    rollout = [observation.copy()]
+
+    trajectory = []
+
+    total_reward = 0
+    if n_timesteps == None:
+        n_timesteps = env.max_episode_steps
+
+    for t in range(n_timesteps):
+        action = torch.squeeze(policy(torch.Tensor(observation)[None, :])[0])
+        next_observation, reward, terminal, _ = env.step(action.detach().numpy())
+        total_reward += reward
+
+        observation_tensor = torch.from_numpy(observation)
+        action_tensor = action
+        trajectory.append(torch.cat((observation_tensor, action_tensor)))
+
+        ## update rollout observations
+        rollout.append(next_observation.copy())
+
+        if terminal:
+            break
+
+        observation = next_observation
+    
+    trajectory = torch.stack(trajectory, dim= 0).reshape((1, env.max_episode_steps, 6))
+
+    return rollout, trajectory
 
 
 def load_exp_trajectories(n_trajectories = None, device = 'cpu', folder='exp_trajectories'):

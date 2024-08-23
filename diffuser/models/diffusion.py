@@ -59,9 +59,7 @@ class GaussianDiffusion(nn.Module):
         self.clip_denoised = clip_denoised
         self.predict_epsilon = predict_epsilon
 
-        print(f'device betas: {betas.device}')
         self.register_buffer('betas', betas)
-        print(f'device betas registered in buffer:{self.betas.device}')
         self.register_buffer('alphas_cumprod', alphas_cumprod)
         self.register_buffer('alphas_cumprod_prev', alphas_cumprod_prev)
 
@@ -164,8 +162,9 @@ class GaussianDiffusion(nn.Module):
         return model_mean + nonzero_mask * (0.5 * model_log_variance).exp() * noise
     
     #@torch.no_grad()
-    def p_sample_loop(self, shape, cond, verbose=False, return_chain=False, sample_fn=default_sample_fn, 
-                      no_grad_diff_steps = 0, **sample_kwargs):
+    def p_sample_loop(self, shape, cond, verbose=False, return_chain=False, 
+                      sample_fn=default_sample_fn, no_grad_diff_steps = 0, 
+                      fast_sampling_batch_size = 0, **sample_kwargs):
         device = self.betas.device
         #print(f'device in p_sample_loop (from betas):{device}')
 
@@ -184,8 +183,15 @@ class GaussianDiffusion(nn.Module):
 
                 progress.update({'t': i, 'vmin': values.min().item(), 'vmax': values.max().item()})
                 if return_chain: chain.append(x)
+
+        if fast_sampling_batch_size != 0:
+                assert batch_size == 1
+                batch_size = fast_sampling_batch_size
+                x = x.repeat(batch_size, 1, 1)
         
         for i in reversed(range(no_grad_diff_steps, self.n_timesteps)):
+            
+
             t = make_timesteps(batch_size, i, device)
             x, values = sample_fn(self, x, cond, t, **sample_kwargs)
             
@@ -196,7 +202,7 @@ class GaussianDiffusion(nn.Module):
 
         progress.stamp()
 
-        x, values = sort_by_values(x, values)
+        #x, values = sort_by_values(x, values)
         
         if return_chain: chain = torch.stack(chain, dim=1)
         return Sample(x, values, chain)
