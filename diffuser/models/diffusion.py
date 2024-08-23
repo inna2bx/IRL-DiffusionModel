@@ -167,7 +167,7 @@ class GaussianDiffusion(nn.Module):
     def p_sample_loop(self, shape, cond, verbose=False, return_chain=False, sample_fn=default_sample_fn, 
                       no_grad_diff_steps = 0, **sample_kwargs):
         device = self.betas.device
-        print(f'device in p_sample_loop (from betas):{device}')
+        #print(f'device in p_sample_loop (from betas):{device}')
 
         batch_size = shape[0]
         x = torch.randn(shape, device=device)
@@ -249,10 +249,7 @@ class GaussianDiffusion(nn.Module):
 
     def loss(self, x, *args):
         batch_size = len(x)
-        print('debug loss')
-        print(x.get_device())
         t = torch.randint(0, self.n_timesteps, (batch_size,), device=x.device).long()
-        print(t.get_device())
         return self.p_losses(x, *args, t)
 
     def forward(self, cond, *args, **kwargs):

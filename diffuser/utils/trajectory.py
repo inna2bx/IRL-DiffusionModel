@@ -55,7 +55,7 @@ def load_exp_trajectories(n_trajectories = None, device = 'cpu', folder='exp_tra
     exp_trajectories = []
     for file in trajectory_files:
         exp_trajectory = torch.load(f'exp_trajectories/{file}')
-        exp_trajectory.to(device)
+        exp_trajectory = exp_trajectory.to(device)
         exp_trajectories.append(exp_trajectory)
     
     return exp_trajectories

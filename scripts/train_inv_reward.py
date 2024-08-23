@@ -33,13 +33,11 @@ class Parser(utils.Parser):
 
 args = Parser().parse_args('inv')
 
-print(f'device:{args.device}')
-
 TRAJ_STEP_SIZE = 10
 
 GAMMA_LOSS = 0.7
 
-PROFILING = False
+PROFILING = True
 
 env = datasets.load_environment(args.dataset)
 #---------------------------------- loading ----------------------------------#
@@ -50,6 +48,7 @@ diffusion_experiment = utils.load_diffusion(
 )
 
 diffusion = diffusion_experiment.ema
+diffusion.to(args.device)
 dataset = diffusion_experiment.dataset
 renderer = diffusion_experiment.renderer
 
@@ -64,7 +63,6 @@ inv_value_function = InvValueFunction(
     dim_mults=args.dim_mults,)
 
 inv_value_function.to(args.device)
-print(f'inv_nn_device:{next(inv_value_function.parameters()).device}')
 
 inv_guide_config = utils.Config(args.guide, 
                                 model=inv_value_function, 
@@ -121,6 +119,7 @@ for epoch in range(args.n_epochs):
     print(f'epoch: {epoch}')
     epoch_loss = 0
     for exp_trajectory in exp_trajectories:
+        exp_trajectory.to(args.device)
         exp_trajectory_len = exp_trajectory.shape[1]
         for t in range(exp_trajectory_len):
             if t % TRAJ_STEP_SIZE == 0:
@@ -137,7 +136,7 @@ for epoch in range(args.n_epochs):
 
                 clipped_exp_trajectory_len = clipped_exp_trajectory.shape[1]
                 
-                first_observation = clipped_exp_trajectory[0, 0, :4].reshape((4)).detach().numpy()
+                first_observation = clipped_exp_trajectory[0, 0, :4].reshape((4)).detach().cpu().numpy()
 
                 conditions = {0: first_observation}
 
@@ -162,15 +161,12 @@ for epoch in range(args.n_epochs):
                 
                 loss.backward()
                 optimiser.step()
-
-                #to test if the gpu code is working we need just one iteration
-                assert False
                 
                 if PROFILING:
                     backprop_time_end = time.time()
                     backprop_times.append(backprop_time_end - backprop_time_start)
                 
-                epoch_loss += loss.detach()
+                epoch_loss += loss.cpu().detach()
 
                 if PROFILING:
                     iteration_time_end = time.time()
