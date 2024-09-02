@@ -22,6 +22,7 @@ class GuidedPolicy:
     def __call__(self, conditions, batch_size=1, 
                  verbose=True, return_tensor = False, no_grad_diff_steps = 0, 
                  fast_sampling_batch_size = 0):
+        
         conditions = {k: self.preprocess_fn(v) for k, v in conditions.items()}
         conditions = self._format_conditions(conditions, batch_size, 
                                              device=self.device)
@@ -32,6 +33,7 @@ class GuidedPolicy:
                                        no_grad_diff_steps=no_grad_diff_steps,
                                        fast_sampling_batch_size=fast_sampling_batch_size,  
                                        **self.sample_kwargs)
+        
 
         # samples.trajectories.register_hook(lambda grad: print(f'test 2: {grad}'))
 

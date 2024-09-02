@@ -1,4 +1,4 @@
-import json
+import os
 import numpy as np
 from os.path import join
 import torch
@@ -9,12 +9,8 @@ import diffuser.utils as utils
 
 import diffuser.sampling as sampling
 
-import diffuser.utils.trajectory as trajectory
+from diffuser.utils.trajectory import generate_exp_trajectory
 
-
-NUM_EXP_TRAJECTORY = 64
-
-FOLDER = 'exp_trajectories_mixed'
 
 class Parser(utils.Parser):
     dataset: str = 'maze2d-umaze-v1'
@@ -23,6 +19,18 @@ class Parser(utils.Parser):
 #---------------------------------- setup ----------------------------------#
 
 args = Parser().parse_args('inv')
+
+NUM_EXP_TRAJECTORY = 128
+
+START = 0  
+
+FOLDER = f'exp_trajectories/{args.dataset}S{args.scale_grad_by_std}NT{args.n_timesteps}NS{args.n_same_plan_actions}'
+
+if not os.path.exists(FOLDER):
+    os.makedirs(FOLDER)
+
+if not os.path.exists(f'{FOLDER}/plans'):
+    os.makedirs(f'{FOLDER}/plans')
 
 env = datasets.load_environment(args.dataset)
 #---------------------------------- loading ----------------------------------#
@@ -62,8 +70,18 @@ policy_config = utils.Config(
 
 policy = policy_config()
 
-for idx in range(NUM_EXP_TRAJECTORY):
+for idx in range(START, START + NUM_EXP_TRAJECTORY):
     print(f'---------------------- {idx} ----------------------')
-    exp_rollout, exp_trajectory = trajectory.generate_trajectory(env, policy, args, starting_location = (1.5, 3))
+    exp_rollout, exp_trajectory = generate_exp_trajectory(env, 
+                                                        policy, 
+                                                        args, 
+                                                        n_timesteps = args.n_timesteps, 
+                                                        n_same_plan_actions = args.n_same_plan_actions,
+                                                        verbose = True, target=(6,6), 
+                                                        renderer=renderer, 
+                                                        idx=idx,
+                                                        folder = FOLDER)
+    
     torch.save(exp_trajectory, f'{FOLDER}/idx_{idx}.pt')
     renderer.composite(f'{FOLDER}/idx_{idx}_rollout.pdf', np.array(exp_rollout)[None], ncol=1)
+    renderer.composite(f'{FOLDER}/idx_{idx}_rollout.jpg', np.array(exp_rollout)[None], ncol=1)

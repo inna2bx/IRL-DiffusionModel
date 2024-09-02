@@ -151,18 +151,17 @@ class SimpleValueFunction(nn.Module):
     ):
         super().__init__()
 
-        self.fc =  nn.Linear(128, 1)
+        self.fc =  nn.Linear(horizon, 1)
         nn.init.constant_(self.fc.weight, 1)
         self.fc.bias.data.fill_(0)
 
 
     def forward(self, x, cond, time, *args):
-        out = x[:, :, 2] + x[:, :, 3]
-        #out = self.fc(out)
+        out = -torch.sqrt((x[:, :, 2] - 6)**2 + (x[:, :, 3] - 6)**2)
         out = torch.sum(out)
         out = torch.reshape(out, (1,1))
 
-        return out * 5   
+        return out   
 
 
 class InvValueFunction(nn.Module):

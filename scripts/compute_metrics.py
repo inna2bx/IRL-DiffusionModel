@@ -24,7 +24,7 @@ args = Parser().parse_args('metrics')
 
 ##--- Reward Function ---##
 def reward_function(state):
-    return state[0]
+    return -((6 - state[0])**2 + (6 - state[1])**2)
 
 def cumulative_reward_function(trajectory):
     return np.sum(np.apply_along_axis(reward_function, 2, trajectory))
@@ -33,12 +33,14 @@ def cumulative_reward_function(trajectory):
 
 ##--- Load Diffusers ---##
 
+
 env = datasets.load_environment(args.dataset)
 env_observation_space = Box(low=-np.inf, high=np.inf, shape=(1,4), dtype=np.float32)
 env_action_space = Box(low = -1.0, high= 1.0, shape=(1,2), dtype=np.float32)
 
 
-exp_trajectories = load_exp_trajectories(n_trajectories=args.n_expert_traj)
+exp_trajectories = load_exp_trajectories(n_trajectories=args.n_expert_traj, 
+                                         folder=f'exp_trajectories/{args.exp_traj_folder}')
 
 diffusion_experiment = utils.load_diffusion(args.logbase, args.dataset, 
                                             args.diffusion_loadpath, 
@@ -66,17 +68,18 @@ renderer = diffusion_experiment.renderer
 observation_dim = dataset.observation_dim
 action_dim = dataset.action_dim
 
-
-
 inv_value_function = InvValueFunction(
     horizon=args.horizon,
     transition_dim=observation_dim + action_dim,
     cond_dim=observation_dim,
     dim_mults=args.dim_mults,)
 
-irl_savepath = args.savepath.replace('metrics', 'irl')
+irl_savepath = f'logs/{args.dataset}/irl/{args.irl_exp_name}/0'
+args.savepath = f'logs/{args.dataset}/metrics/{args.irl_exp_name}_{args.n_timesteps}_{args.n_same_plan_actions}'
 
-inv_value_function.load_state_dict(torch.load(join(irl_savepath, 'model_weights.pth')))
+inv_value_function.load_state_dict(torch.load(join(irl_savepath, 
+                                                   'model_weights.pth'),
+                                              map_location=torch.device(args.device)))
 
 inv_guide_config = utils.Config(args.guide, 
                                 model=inv_value_function, 
@@ -126,7 +129,9 @@ if not os.path.exists(join(args.savepath, base_diffuser_path)):
 
 for i in range(args.n_rollout):
 
-    rollout, _ = generate_trajectory(env, base_policy, args)
+    rollout, _ = generate_trajectory(env, base_policy, args, 
+                                     n_timesteps=args.n_timesteps, 
+                                     n_same_plan_actions=args.n_same_plan_actions)
 
     rollout = np.array(rollout)[None]
 
@@ -143,7 +148,9 @@ if not os.path.exists(join(args.savepath, guided_diffuser_path)):
 
 for i in range(args.n_rollout):
 
-    rollout, _ = generate_trajectory(env, inv_policy, args)
+    rollout, _ = generate_trajectory(env, inv_policy, args,
+                                     n_timesteps=args.n_timesteps, 
+                                     n_same_plan_actions=args.n_same_plan_actions)
 
     rollout = np.array(rollout)[None]
     guided_diffuser_rewards[i] = cumulative_reward_function(rollout)
@@ -182,7 +189,8 @@ if not os.path.exists(join(args.savepath, bc_path)):
 
 for i in range(args.n_rollout):
 
-    rollout, _ = generate_trajectory_generic_policy(env, bc.policy, args)
+    rollout, _ = generate_trajectory_generic_policy(env, bc.policy, args,
+                                                    n_timesteps=args.n_timesteps)
 
     rollout = np.array(rollout)[None]
     bc_rewards[i] = cumulative_reward_function(rollout)

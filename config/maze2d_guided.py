@@ -49,7 +49,7 @@ base = {
         'preprocess_fns': ['maze2d_set_terminals'],
         'clip_denoised': True,
         'use_padding': False,
-        'max_path_length': 4000,
+        'max_path_length': 40000,
 
         ## serialization
         'logbase': 'logs',
@@ -57,9 +57,9 @@ base = {
         'exp_name': watch(diffusion_args_to_watch),
 
         ## training
-        'n_steps_per_epoch': 1000,
+        'n_steps_per_epoch': 10000,
         'loss_type': 'l2',
-        'n_train_steps': 15 * 6 * 1000, #2e6,
+        'n_train_steps': 2e6,
         'batch_size': 32,
         'learning_rate': 2e-4,
         'gradient_accumulate_every': 2,
@@ -92,7 +92,7 @@ base = {
         'normalizer': 'LimitsNormalizer',
         'preprocess_fns': ['maze2d_set_terminals'],
         'use_padding': True,
-        'max_path_length': 4000,
+        'max_path_length': 40000,
 
         ## serialization
         'logbase': 'logs',
@@ -178,10 +178,19 @@ base = {
         'n_diffusion_steps': 256,
         'normalizer': 'LimitsNormalizer',
 
+        ## Generating exp traj
+        'n_timesteps': None,
+        'n_same_plan_actions': 1,
+
+
         ## IRL
         'n_epochs': 500,
         'gamma_loss': 0.7,
-        'n_expert_traj':2,
+        'n_expert_traj':None,
+        'n_final_samples': 4,
+        'n_minibatch_per_epoch':4,
+        'n_sample_for_trajectory':50,
+        'inv_batch_size':16,
 
         ## stop gradient
         'no_grad_diff_steps':0,
@@ -240,13 +249,6 @@ base = {
         'gamma_loss': 0.7,
         'n_expert_traj':2,
 
-        ## stop gradient
-        'no_grad_diff_steps':0,
-
-        ## fast sampling
-        'traj_step_size':10,
-        'fast_sampling_batch_size': 1, 
-
 
         ## serialization
         'loadbase': None,
@@ -272,6 +274,11 @@ base = {
 
         'dim_mults': (1, 4, 8),
         'n_rollout' : 10,
+
+        'exp_traj_folder':None,
+        'irl_exp_name': None,
+        'n_timesteps':600,
+        'n_same_plan_actions': 1,
     },
 
 }
@@ -316,6 +323,18 @@ maze2d_large_v1 = {
         'n_diffusion_steps': 256,
     },
     'plan': {
+        'horizon': 384,
+        'n_diffusion_steps': 256,
+    },
+    'values': {
+        'horizon': 384,
+        'n_diffusion_steps': 256,
+    },
+    'inv': {
+        'horizon': 384,
+        'n_diffusion_steps': 256,
+    },
+    'metrics': {
         'horizon': 384,
         'n_diffusion_steps': 256,
     },

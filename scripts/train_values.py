@@ -91,7 +91,7 @@ trainer_config = utils.Config(
 
 model = model_config()
 
-diffusion = diffusion_config(model)
+diffusion = diffusion_config(model, device = args.device)
 
 trainer = trainer_config(diffusion, dataset, renderer)
 
@@ -102,9 +102,9 @@ trainer = trainer_config(diffusion, dataset, renderer)
 print('Testing forward...', end=' ', flush=True)
 batch = utils.batchify(dataset[0])
 
-loss, _ = diffusion.loss(*batch)
-loss.backward()
-print('✓')
+# loss, _ = diffusion.loss(*batch)
+# loss.backward()
+# print('✓')
 
 trainer.save(1)
 

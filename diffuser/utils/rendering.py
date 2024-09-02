@@ -7,7 +7,6 @@ from matplotlib.colors import ListedColormap, Normalize
 import gym
 import mujoco_py as mjc
 import warnings
-import pdb
 
 from .arrays import to_np
 from .video import save_video, save_videos
@@ -331,6 +330,7 @@ class MazeRenderer:
                     bbox_inches='tight',
                     dpi=400,
                     transparent=True)
+        plt.close(fig)
         print(f'Saved {len(paths)} samples to: {savepath}')
 
 class Maze2dRenderer(MazeRenderer):
