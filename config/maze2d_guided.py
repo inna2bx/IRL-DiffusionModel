@@ -273,12 +273,13 @@ base = {
         'verbose':True,
 
         'dim_mults': (1, 4, 8),
-        'n_rollout' : 10,
+        'n_rollout' : 20,
 
         'exp_traj_folder':None,
         'irl_exp_name': None,
-        'n_timesteps':600,
+        'n_timesteps':300,
         'n_same_plan_actions': 1,
+        'method_metric_name':'normal',
     },
 
 }

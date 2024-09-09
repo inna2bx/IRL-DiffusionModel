@@ -9,7 +9,6 @@ from imitation.algorithms.bc import BC
 
 import diffuser.utils as utils
 import diffuser.datasets as datasets
-from diffuser.guides.policies import Policy
 
 import diffuser.sampling as sampling
 
@@ -41,20 +40,6 @@ env_action_space = Box(low = -1.0, high= 1.0, shape=(1,2), dtype=np.float32)
 
 exp_trajectories = load_exp_trajectories(n_trajectories=args.n_expert_traj, 
                                          folder=f'exp_trajectories/{args.exp_traj_folder}')
-
-diffusion_experiment = utils.load_diffusion(args.logbase, args.dataset, 
-                                            args.diffusion_loadpath, 
-                                            epoch=args.diffusion_epoch)
-
-diffusion = diffusion_experiment.ema
-dataset = diffusion_experiment.dataset
-renderer = diffusion_experiment.renderer
-
-
-policy = Policy(diffusion, dataset.normalizer)
-
-
-env = datasets.load_environment(args.dataset)
 
 diffusion_experiment = utils.load_diffusion(
     args.loadbase, args.dataset, args.diffusion_loadpath,
@@ -120,6 +105,55 @@ inv_policy_config = utils.Config(
 
 inv_policy = inv_policy_config()
 
+##--- Transform expert trajectories to be used with imitation ---##
+
+im_expert_trajectories = []
+
+for traj in exp_trajectories:
+    traj = torch.squeeze(traj)
+    acts = traj[:-1, :2].numpy()
+    obs = traj[:, 2:].numpy()
+    im_traj = Trajectory(obs, acts, infos=None, terminal=True)
+    im_expert_trajectories.append(im_traj)
+
+
+##--- Behaviour Cloning ---##
+
+bc = BC(observation_space = env_observation_space, 
+        action_space = env_action_space, 
+        rng = np.random.default_rng(seed=42), 
+        demonstrations=im_expert_trajectories,)
+
+bc.train(n_epochs=200)
+
+##--- Compute Metrics ---##
+
+base_diffuser_rewards = np.zeros(args.n_rollout)
+
+base_diffuser_path = 'rollouts/base_diffuser'
+
+if not os.path.exists(join(args.savepath, base_diffuser_path)):
+    os.makedirs(join(args.savepath, base_diffuser_path))
+
+
+for i in range(args.n_rollout):
+    position = tuple(env.reset()[:2])
+    rollout, _ = generate_trajectory(env, base_policy, args, 
+                                     n_timesteps=args.n_timesteps, 
+                                     n_same_plan_actions=args.n_same_plan_actions)
+
+    rollout = np.array(rollout)[None]
+
+    np.save(join(args.savepath, f'{base_diffuser_path}/rollout_{i}.npy'), rollout)
+    renderer.composite(join(args.savepath, f'{base_diffuser_path}/rollout_{i}.pdf'), rollout, ncol=1)
+    base_diffuser_rewards[i] = cumulative_reward_function(rollout)
+
+
+
+
+
+
+
 ##--- Base diffuser ---##
 base_diffuser_rewards = np.zeros(args.n_rollout)
 
@@ -158,28 +192,6 @@ for i in range(args.n_rollout):
     np.save(join(args.savepath, f'{guided_diffuser_path}/rollout_{i}.npy'), rollout)
     renderer.composite(join(args.savepath, f'{guided_diffuser_path}/rollout_{i}.pdf'), rollout, ncol=1)
     guided_diffuser_rewards[i] = cumulative_reward_function(rollout)
-
-
-##--- Transform expert trajectories to be used with imitation ---##
-
-im_expert_trajectories = []
-
-for traj in exp_trajectories:
-    traj = torch.squeeze(traj)
-    acts = traj[:-1, :2].numpy()
-    obs = traj[:, 2:].numpy()
-    im_traj = Trajectory(obs, acts, infos=None, terminal=True)
-    im_expert_trajectories.append(im_traj)
-
-
-##--- Behaviour Cloning ---##
-
-bc = BC(observation_space = env_observation_space, 
-        action_space = env_action_space, 
-        rng = np.random.default_rng(seed=42), 
-        demonstrations=im_expert_trajectories,)
-
-bc.train(n_epochs=200)
 
 bc_rewards = np.zeros(args.n_rollout)
 

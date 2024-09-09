@@ -44,12 +44,12 @@ class Parser(utils.Parser):
 
 args = Parser().parse_args('inv')
 
-# wandb.init(
-#     # set the wandb project where this run will be logged
-#     project='IRL with Diffuser',
-#     name = args.exp_name
-#     # track hyperparameters and run metadata
-# )
+wandb.init(
+    # set the wandb project where this run will be logged
+    project='IRL with Diffuser',
+    name = args.exp_name
+    # track hyperparameters and run metadata
+)
 
 PROFILING = False
 
@@ -193,7 +193,7 @@ for epoch in range(args.n_epochs):
     
     
     
-    # wandb.log({"loss": epoch_loss})
+    wandb.log({"loss": epoch_loss})
     print(epoch_loss)
     losses.append(epoch_loss)
 
@@ -204,11 +204,12 @@ for epoch in range(args.n_epochs):
 
     if epoch % 10 == 0:
         plot_loss(losses)
+        np.save(join(args.savepath, 'losses.npy'), np.array(losses, dtype=object), allow_pickle=True)
         torch.save(inv_value_function.state_dict(), 
                    join(args.savepath, 'model_weights.pth'))
 
 
-# wandb.finish()
+wandb.finish()
 print('Training finished')
 plot_loss(losses)
 np.save(join(args.savepath, 'losses.npy'), np.array(losses, dtype=object), allow_pickle=True)
