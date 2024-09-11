@@ -35,20 +35,23 @@ renderer = diffusion_experiment.renderer
 observation_dim = dataset.observation_dim
 action_dim = dataset.action_dim
 
-inv_value_function = InvValueFunction(
-    horizon=args.horizon,
+inv_value_function_config = utils.Config(args.inv_network, horizon=args.horizon,
     transition_dim=observation_dim + action_dim,
     cond_dim=observation_dim,
     dim_mults=args.dim_mults,)
+
+inv_value_function = inv_value_function_config()
+inv_value_function.to(args.device)
 
 irl_savepath = f'logs/{args.dataset}/irl/{args.irl_exp_name}/0'
 args.savepath = f'logs/{args.dataset}/metrics/{args.irl_exp_name}/{args.method_metric_name}'
 if not os.path.exists(args.savepath):
     os.makedirs(args.savepath)
 
-inv_value_function.load_state_dict(torch.load(join(irl_savepath, 
-                                                   'model_weights.pth'),
-                                              map_location=torch.device(args.device)))
+if args.load_weights:
+    inv_value_function.load_state_dict(torch.load(join(irl_savepath, 
+                                                    'model_weights.pth'),
+                                                map_location=torch.device(args.device)))
 
 inv_guide_config = utils.Config(args.guide, 
                                 model=inv_value_function, 
@@ -75,7 +78,10 @@ policy = policy_config()
 with open(f'logs/{args.dataset}/metrics/starting_positions.json', 'r') as file:
     starting_points = json.load(file)
 
-for starting_point, idx in zip(starting_points, range(len(starting_points))):
+starting_idx = (args.metrics_index-1) * 20
+starting_points = starting_points[starting_idx:starting_idx+20]
+
+for starting_point, idx in zip(starting_points, range(starting_idx, starting_idx+20)):
     rollout, _ = generate_trajectory(env, policy, args, 
                                      starting_location=tuple(starting_point), 
                                      n_timesteps=args.n_timesteps, 

@@ -193,6 +193,35 @@ class InvValueFunction(nn.Module):
 
         return out
 
+class DeepInvValueFunction(nn.Module):
+    def __init__(
+        self,
+        horizon,
+        transition_dim,
+        cond_dim,
+        dim=32,
+        time_dim=None,
+        out_dim=1,
+        dim_mults=(1, 2, 4, 8),
+    ):
+        super().__init__()
+        self.traj_dim = horizon*transition_dim
+        self.model =  nn.Sequential(
+            nn.Linear(self.traj_dim, 64),
+            nn.ReLU(),
+            nn.Linear(64,32),
+            nn.ReLU(),
+            nn.Linear(32,1)
+        )
+
+    def forward(self, x, cond, time, *args):
+        n_batches = x.shape[0]
+        x = x.reshape(n_batches, self.traj_dim)
+        out = self.model(x)
+        out = torch.reshape(out, (n_batches,1))
+
+        return out
+
 
 class ValueFunction(nn.Module):
 

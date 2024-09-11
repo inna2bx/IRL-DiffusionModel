@@ -143,3 +143,5 @@ dmypy.json
 logs/
 */dif.txt
 
+exp_trajectories/
+

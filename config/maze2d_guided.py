@@ -162,6 +162,7 @@ base = {
     'inv' : {
         'guide': 'sampling.ValueGuide',
         'policy': 'sampling.GuidedPolicy',
+        'inv_network': 'models.temporal.InvValueFunction',
         'batch_size': 1,
         'preprocess_fns': [],
         'device': 'cuda',
@@ -228,6 +229,7 @@ base = {
     'metrics' : {
         'guide': 'sampling.ValueGuide',
         'policy': 'sampling.GuidedPolicy',
+        'inv_network': 'models.temporal.InvValueFunction',
         'batch_size': 1,
         'preprocess_fns': [],
         'device': 'cpu',
@@ -280,6 +282,8 @@ base = {
         'n_timesteps':300,
         'n_same_plan_actions': 1,
         'method_metric_name':'normal',
+        'metrics_index':1,
+        'load_weights':True,
     },
 
 }

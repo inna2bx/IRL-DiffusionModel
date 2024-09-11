@@ -7,15 +7,32 @@ from diffuser.utils.trajectory import load_rollouts
 
 ##--- Parameters --##
 
+# FOLDERS =[
+#     'bc',
+#     'gpu-irl-maze2d-medium-new-dataset/normal',
+#     'irl-medium-stop-gradient/normal',
+#     'irl-medium-fast-sampling/normal',
+#     'irl-medium-fast-sampling-nn/normal'
+
+# ]
+
+# METHODS = [
+#     'BC',
+#     'BASE METHOD',
+#     'STOP GRADIENT',
+#     'FAST SAMPLING',
+#     'FAST SAMPLING (3 LAYERS NET)'
+# ]
+
 FOLDERS =[
-    'bc',
-    'irl-medium-fast-sampling/normal',
+    'bc_hm',
+    'irl-medium-fast-sampling-hm/normal'
 
 ]
 
 METHODS = [
     'BC',
-    'FAST SAMPLING'
+    'FAST SAMPLING (3 LAYERS NET)'
 ]
 
 ##--- Reward Function ---##
@@ -36,6 +53,7 @@ save_folder = f'logs/{args.dataset}/metrics'
 
 rewards_per_method = {}
 for folder, method in zip(FOLDERS, METHODS):
+    print(method)
     rollouts_folder = f'logs/{args.dataset}/metrics/{folder}'
     rollouts = load_rollouts(folder=rollouts_folder)
     

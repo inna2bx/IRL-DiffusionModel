@@ -47,7 +47,8 @@ args = Parser().parse_args('inv')
 wandb.init(
     # set the wandb project where this run will be logged
     project='IRL with Diffuser',
-    name = args.exp_name
+    name = args.exp_name,
+    mode='online'
     # track hyperparameters and run metadata
 )
 
@@ -70,13 +71,23 @@ renderer = diffusion_experiment.renderer
 observation_dim = dataset.observation_dim
 action_dim = dataset.action_dim
 
-inv_value_function = InvValueFunction(
-    horizon=args.horizon,
+# inv_value_function = InvValueFunction(
+#     horizon=args.horizon,
+#     transition_dim=observation_dim + action_dim,
+#     cond_dim=observation_dim,
+#     dim_mults=args.dim_mults,)
+
+# inv_value_function.to(args.device)
+
+inv_value_function_config = utils.Config(args.inv_network, horizon=args.horizon,
     transition_dim=observation_dim + action_dim,
     cond_dim=observation_dim,
     dim_mults=args.dim_mults,)
 
+inv_value_function = inv_value_function_config()
 inv_value_function.to(args.device)
+
+print(type(inv_value_function))
 
 inv_guide_config = utils.Config(args.guide, 
                                 model=inv_value_function, 
