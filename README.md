@@ -1,17 +1,7 @@
-# Planning with Diffusion &nbsp;&nbsp; [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1YajKhu-CUIGBJeQPehjVPJcK_b38a8Nc?usp=sharing)
+# Inverse Reinforcement Learning with Diffusion Models &nbsp;&nbsp;
 
 
-Training and visualizing of diffusion models from [Planning with Diffusion for Flexible Behavior Synthesis](https://diffusion-planning.github.io/).
-This branch has the Maze2D experiments and will be merged into main shortly.
-
-<p align="center">
-    <img src="https://diffusion-planning.github.io/images/diffuser-card.png" width="60%" title="Diffuser model">
-</p>
-
-## Quickstart
-
-Load a pretrained diffusion model and sample from it in your browser with [scripts/diffuser-sample.ipynb](https://colab.research.google.com/drive/1YajKhu-CUIGBJeQPehjVPJcK_b38a8Nc?usp=sharing).
-
+Code for the thesis "Inverse Reinforcement Learning (IRL) with Diffusion Models". This repository contains the implementation of diffusion models for solving IRL tasks by learning reward functions from expert demonstrations.
 
 ## Installation
 
@@ -20,6 +10,10 @@ conda env create -f environment.yml
 conda activate diffusion
 pip install -e .
 ```
+
+Further operations, which are system dependent, might be required in order to install mujoco.
+
+Download the used dataset of expert trajectories from [here](https://drive.google.com/drive/folders/18tfzPTmFu_pH_UoISrH2IEMyrk5uVjQ9?usp=sharing)
 
 ## Usage
 
@@ -36,74 +30,33 @@ Plan using the diffusion model with:
 python scripts/plan_maze2d.py --config config.maze2d --dataset maze2d-large-v1
 ```
 
-
-## Docker
-
-1. Build the container:
+Learn the IRL Reward with BDGIRL method:
 ```
-docker build -f azure/Dockerfile . -t diffuser
+python scripts/train_inv_reward.py
 ```
 
-2. Test the container:
+Learn the IRL Reward with stop gradient method:
 ```
-docker run -it --rm --gpus all \
-    --mount type=bind,source=$PWD,target=/home/code \
-    --mount type=bind,source=$HOME/.d4rl,target=/root/.d4rl \
-    diffuser \
-    bash -c \
-    "export PYTHONPATH=$PYTHONPATH:/home/code && \
-    python /home/code/scripts/train.py --dataset hopper-medium-expert-v2 --logbase logs/docker"
+python scripts/train_inv_reward.py --no_grad_diff_steps 190
 ```
 
-
-## Running on Azure
-
-#### Setup
-
-1. Launching jobs on Azure requires one more python dependency:
+Learn the IRL Reward with fast sampling method:
 ```
-pip install git+https://github.com/JannerM/doodad.git@janner
+python scripts/train_inv_reward.py --no_grad_diff_steps 190 --fast_sampling_batch_size 8 --inv_batch_size 2
 ```
-
-2. Tag the image built in [the previous section](#Docker) and push it to Docker Hub:
-```
-export DOCKER_USERNAME=$(docker info | sed '/Username:/!d;s/.* //')
-docker tag diffuser ${DOCKER_USERNAME}/diffuser:latest
-docker image push ${DOCKER_USERNAME}/diffuser
-```
-
-3. Update [`azure/config.py`](azure/config.py), either by modifying the file directly or setting the relevant [environment variables](azure/config.py#L47-L52). To set the `AZURE_STORAGE_CONNECTION` variable, navigate to the `Access keys` section of your storage account. Click `Show keys` and copy the `Connection string`.
-
-4. Download [`azcopy`](https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10): `./azure/download.sh`
-
-#### Usage
-
-Launch training jobs with `python azure/launch.py`. The launch script takes no command-line arguments; instead, it launches a job for every combination of hyperparameters in [`params_to_sweep`](azure/launch_train.py#L36-L38).
-
-
-#### Viewing results
-
-To rsync the results from the Azure storage container, run `./azure/sync.sh`.
-
-To mount the storage container:
-1. Create a blobfuse config with `./azure/make_fuse_config.sh`
-2. Run `./azure/mount.sh` to mount the storage container to `~/azure_mount`
-
-To unmount the container, run `sudo umount -f ~/azure_mount; rm -r ~/azure_mount`
-
 
 ## Reference
 ```
-@inproceedings{janner2022diffuser,
-  title = {Planning with Diffusion for Flexible Behavior Synthesis},
-  author = {Michael Janner and Yilun Du and Joshua B. Tenenbaum and Sergey Levine},
-  booktitle = {International Conference on Machine Learning},
-  year = {2022},
+@thesis{fantoni2024irl_diffusion,
+  title={Inverse Reinforcement Learning with Diffusion Models},
+  author={Giovanni Fantoni},
+  year={2024},
+  school={University College London}
 }
 ```
 
 
 ## Acknowledgements
-
+The original codebase is from Janner et al. [Planning with Diffusion](https://github.com/jannerm/diffuser).
 The diffusion model implementation is based on Phil Wang's [denoising-diffusion-pytorch](https://github.com/lucidrains/denoising-diffusion-pytorch) repo.
 The organization of this repo and remote launcher is based on the [trajectory-transformer](https://github.com/jannerm/trajectory-transformer) repo.
