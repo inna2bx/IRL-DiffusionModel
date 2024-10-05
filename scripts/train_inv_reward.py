@@ -36,6 +36,13 @@ def loss_function(exp_trajectory, sampled_trajectories, weights):
 def my_collate(batch):
     return list(batch)
 
+def transform_exp_traj(exp_traj, normalizer,device):
+    exp_traj_np = exp_traj.detach().cpu().numpy()
+    obs = normalizer.normalize(exp_traj_np[:,:4], 'observations')
+    act = normalizer.normalize(exp_traj_np[:,4:], 'actions')
+    exp_traj_normed = np.concatenate((act, obs), axis=-1)
+    return torch.from_numpy(exp_traj_normed).to(device)
+
 class Parser(utils.Parser):
     dataset: str = 'maze2d-umaze-v1'
     config: str = 'config.maze2d_guided'
@@ -43,6 +50,9 @@ class Parser(utils.Parser):
 #---------------------------------- setup ----------------------------------#
 
 args = Parser().parse_args('inv')
+
+if args.exp_traj_folder == None:
+    args.exp_traj_folder = args.dataset
 
 wandb.init(
     # set the wandb project where this run will be logged
@@ -115,11 +125,11 @@ inv_policy = inv_policy_config()
 #---------------------------------- main loop ----------------------------------#
 exp_traj_dataset = ExpTrajDataset(n_trajectories=args.n_expert_traj, 
                                   device=args.device,
-                                  folder=f'exp_trajectories/{args.dataset}',
+                                  folder=f'exp_trajectories/{args.exp_traj_folder}',
                                   horizon=args.horizon,
                                   n_sample_for_trajectory=args.n_sample_for_trajectory)
 
-optimiser = torch.optim.Adam(inv_guide.parameters(), lr=2e-2)
+optimiser = torch.optim.Adam(inv_guide.parameters(), lr=args.lr)
 loss_weight = torch.tensor([args.gamma_loss]).repeat(args.horizon)
 exponents = torch.arange(args.horizon)
 loss_weight = torch.pow(loss_weight, exponents).to(args.device)
@@ -155,6 +165,8 @@ for epoch in range(args.n_epochs):
         batch = next(exp_traj_dataloader)
         for sample in batch:
             exp_traj, starting_obs = sample
+            exp_traj = transform_exp_traj(exp_traj, dataset.normalizer, args.device)
+            
             if PROFILING:
                 iteration_time_start = time.time()
 
@@ -167,7 +179,7 @@ for epoch in range(args.n_epochs):
                                                     batch_size=args.batch_size, 
                                                     no_grad_diff_steps=args.no_grad_diff_steps, 
                                                     fast_sampling_batch_size = args.fast_sampling_batch_size, 
-                                                    return_tensor = True)
+                                                    return_tensor = True, verbose = False)
             
             
             if PROFILING:
@@ -178,7 +190,6 @@ for epoch in range(args.n_epochs):
             clipped_loss_weight = loss_weight[:len(exp_traj)]
 
             clipped_loss_weight = clipped_loss_weight[None,:,None]
-
             loss = loss_function(exp_traj, 
                                  clipped_sampled_trajectory, 
                                  clipped_loss_weight)
@@ -187,7 +198,7 @@ for epoch in range(args.n_epochs):
                 backprop_time_start = time.time()
             
             loss.backward()
-            
+
             if PROFILING:
                 backprop_time_end = time.time()
                 backprop_times.append(backprop_time_end - backprop_time_start)

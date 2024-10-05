@@ -7,37 +7,29 @@ from diffuser.utils.trajectory import load_rollouts
 
 ##--- Parameters --##
 
-# FOLDERS =[
-#     'bc',
-#     'gpu-irl-maze2d-medium-new-dataset/normal',
-#     'irl-medium-stop-gradient/normal',
-#     'irl-medium-fast-sampling/normal',
-#     'irl-medium-fast-sampling-nn/normal'
-
-# ]
-
-# METHODS = [
-#     'BC',
-#     'BASE METHOD',
-#     'STOP GRADIENT',
-#     'FAST SAMPLING',
-#     'FAST SAMPLING (3 LAYERS NET)'
-# ]
 
 FOLDERS =[
-    'bc_hm',
-    'irl-medium-fast-sampling-hm/normal'
+    'bc',
+    'irl-umaze-base/normal',
+    'irl-tr-reward/normal',
+    'irl-no-inv/normal',
 
 ]
 
 METHODS = [
-    'BC',
-    'FAST SAMPLING (3 LAYERS NET)'
+    'Behavioral Cloning',
+    'Base Diffuser\nGuided by IRL',
+    'Base Diffuser\nGuided by True Reward',
+    'Base Diffuser\nNo Guiding',
+
 ]
 
 ##--- Reward Function ---##
+# def reward_function(state):
+#     return -((6 - state[0])**2 + (6 - state[1])**2)
+
 def reward_function(state):
-    return -((6 - state[0])**2 + (6 - state[1])**2)
+    return state[0]
 
 def cumulative_reward_function(trajectory):
     return np.sum(np.apply_along_axis(reward_function, 2, trajectory))
@@ -73,7 +65,7 @@ plt.boxplot(rewards_per_method.values(),
 
 # Step 4: Customize the plot
 plt.ylabel('Cumulative Rewards')
-plt.title('Box Plot of Cumulative Rewards across 20 Trajectories (600 timesteps)')
+plt.title('Box Plot of Cumulative Rewards across 100 Trajectories (300 timesteps)')
 
 # Optional: Adding a grid for better readability
 plt.grid(True, which='both', linestyle='--', linewidth=0.5)
@@ -86,7 +78,8 @@ metrics_string = ''
 for method, rewards in rewards_per_method.items() :
     mean = np.round(rewards.mean(), decimals=2)
     std = np.round(rewards.std(), decimals=2)
-    metrics_string += f'{method}: {mean} +- {std}\n'
+    str_method = method.replace("\n", "")
+    metrics_string += f'{str_method}: {mean} +- {std}\n'
 
 with open(f'{save_folder}/metrics.txt', 'w') as txt_file:
     txt_file.write(metrics_string)

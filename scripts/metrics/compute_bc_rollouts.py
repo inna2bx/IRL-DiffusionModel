@@ -21,7 +21,7 @@ class Parser(utils.Parser):
 args = Parser().parse_args('metrics')
 if args.exp_traj_folder == None:
     args.exp_traj_folder = args.dataset
-args.savepath = f'logs/{args.dataset}/metrics/bc'
+args.savepath = f'logs/{args.dataset}/metrics/bc_hm'
 if not os.path.exists(args.savepath):
     os.makedirs(args.savepath)
 
@@ -39,6 +39,7 @@ dataset = diffusion_experiment.dataset
 renderer = diffusion_experiment.renderer
 
 exp_trajectories = load_exp_trajectories(folder=f'exp_trajectories/{args.exp_traj_folder}')
+print(len(exp_trajectories))
 
 ##--- Transform expert trajectories to be used with imitation ---##
 
@@ -46,8 +47,10 @@ im_expert_trajectories = []
 
 for traj in exp_trajectories:
     traj = torch.squeeze(traj)
-    acts = traj[:-1, :2].numpy()
-    obs = traj[:, 2:].numpy()
+    # acts = traj[:-1, :2].numpy()
+    # obs = traj[:, 2:].numpy()
+    obs = traj[:, :4].numpy()
+    acts = traj[:-1, 4:].numpy()
     im_traj = Trajectory(obs, acts, infos=None, terminal=True)
     im_expert_trajectories.append(im_traj)
 
@@ -59,7 +62,7 @@ bc = BC(observation_space = env_observation_space,
         rng = np.random.default_rng(seed=42), 
         demonstrations=im_expert_trajectories,)
 
-bc.train(n_epochs=1000)
+bc.train(n_epochs=10000)
 
 with open(f'logs/{args.dataset}/metrics/starting_positions.json', 'r') as file:
     starting_points = json.load(file)

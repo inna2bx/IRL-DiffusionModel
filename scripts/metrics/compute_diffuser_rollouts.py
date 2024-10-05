@@ -21,6 +21,8 @@ class Parser(utils.Parser):
 
 args = Parser().parse_args('metrics')
 
+ROLLOUT_PER_JOB = 10
+
 env = datasets.load_environment(args.dataset)
 
 diffusion_experiment = utils.load_diffusion(
@@ -46,7 +48,10 @@ inv_value_function.to(args.device)
 irl_savepath = f'logs/{args.dataset}/irl/{args.irl_exp_name}/0'
 args.savepath = f'logs/{args.dataset}/metrics/{args.irl_exp_name}/{args.method_metric_name}'
 if not os.path.exists(args.savepath):
-    os.makedirs(args.savepath)
+    try:  
+        os.makedirs(args.savepath)  
+    except OSError as error:  
+        print(error)
 
 if args.load_weights:
     inv_value_function.load_state_dict(torch.load(join(irl_savepath, 
@@ -78,10 +83,10 @@ policy = policy_config()
 with open(f'logs/{args.dataset}/metrics/starting_positions.json', 'r') as file:
     starting_points = json.load(file)
 
-starting_idx = (args.metrics_index-1) * 20
-starting_points = starting_points[starting_idx:starting_idx+20]
+starting_idx = (args.metrics_index-1) * ROLLOUT_PER_JOB
+starting_points = starting_points[starting_idx:starting_idx+ROLLOUT_PER_JOB]
 
-for starting_point, idx in zip(starting_points, range(starting_idx, starting_idx+20)):
+for starting_point, idx in zip(starting_points, range(starting_idx, starting_idx+ROLLOUT_PER_JOB)):
     rollout, _ = generate_trajectory(env, policy, args, 
                                      starting_location=tuple(starting_point), 
                                      n_timesteps=args.n_timesteps, 

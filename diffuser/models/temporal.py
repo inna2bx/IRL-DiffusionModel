@@ -157,7 +157,7 @@ class SimpleValueFunction(nn.Module):
 
 
     def forward(self, x, cond, time, *args):
-        out = -torch.sqrt((x[:, :, 2] - 6)**2 + (x[:, :, 3] - 6)**2)
+        out = x[:, :, 2]
         out = torch.sum(out)
         out = torch.reshape(out, (1,1))
 
@@ -212,6 +212,93 @@ class DeepInvValueFunction(nn.Module):
             nn.Linear(64,32),
             nn.ReLU(),
             nn.Linear(32,1)
+        )
+
+    def forward(self, x, cond, time, *args):
+        n_batches = x.shape[0]
+        x = x.reshape(n_batches, self.traj_dim)
+        out = self.model(x)
+        out = torch.reshape(out, (n_batches,1))
+
+        return out
+    
+class DeepInvValueFunction2(nn.Module):
+    def __init__(
+        self,
+        horizon,
+        transition_dim,
+        cond_dim,
+        dim=32,
+        time_dim=None,
+        out_dim=1,
+        dim_mults=(1, 2, 4, 8),
+    ):
+        super().__init__()
+        self.traj_dim = horizon*transition_dim
+        self.model =  nn.Sequential(
+            nn.Linear(self.traj_dim, 256),
+            nn.ReLU(),
+            nn.Linear(256,128),
+            nn.ReLU(),
+            nn.Linear(128,64),
+            nn.ReLU(),
+            nn.Linear(64,32),
+            nn.ReLU(),
+            nn.Linear(32,1)
+        )
+
+    def forward(self, x, cond, time, *args):
+        n_batches = x.shape[0]
+        x = x.reshape(n_batches, self.traj_dim)
+        out = self.model(x)
+        out = torch.reshape(out, (n_batches,1))
+
+        return out
+
+class DeepInvValueFunction16(nn.Module):
+    def __init__(
+        self,
+        horizon,
+        transition_dim,
+        cond_dim,
+        dim=32,
+        time_dim=None,
+        out_dim=1,
+        dim_mults=(1, 2, 4, 8),
+    ):
+        super().__init__()
+        self.traj_dim = horizon*transition_dim
+        self.model =  nn.Sequential(
+            nn.Linear(self.traj_dim, 16),
+            nn.ReLU(),
+            nn.Linear(16,1)
+        )
+
+    def forward(self, x, cond, time, *args):
+        n_batches = x.shape[0]
+        x = x.reshape(n_batches, self.traj_dim)
+        out = self.model(x)
+        out = torch.reshape(out, (n_batches,1))
+
+        return out
+    
+class DeepInvValueFunction256(nn.Module):
+    def __init__(
+        self,
+        horizon,
+        transition_dim,
+        cond_dim,
+        dim=32,
+        time_dim=None,
+        out_dim=1,
+        dim_mults=(1, 2, 4, 8),
+    ):
+        super().__init__()
+        self.traj_dim = horizon*transition_dim
+        self.model =  nn.Sequential(
+            nn.Linear(self.traj_dim, 256),
+            nn.ReLU(),
+            nn.Linear(256,1)
         )
 
     def forward(self, x, cond, time, *args):

@@ -160,6 +160,8 @@ base = {
     },
 
     'inv' : {
+        'lr': 2e-2,
+        'exp_traj_folder': None,
         'guide': 'sampling.ValueGuide',
         'policy': 'sampling.GuidedPolicy',
         'inv_network': 'models.temporal.InvValueFunction',

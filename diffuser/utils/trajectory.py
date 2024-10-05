@@ -1,7 +1,9 @@
 import os
 import torch
+import re
 import numpy as np
 from torch.utils.data import Dataset
+
 
 def generate_exp_trajectory(env, policy, args, starting_location = None, 
                             n_timesteps = None, n_same_plan_actions = 1,
@@ -198,7 +200,7 @@ def load_exp_trajectories(n_trajectories = None, device = 'cpu', folder='exp_tra
 def load_rollouts(n_trajectories = None, folder=''):
     trajectory_files = os.listdir(folder)
     trajectory_files = [l for l in trajectory_files if l[-4:] == '.npy']
-    trajectory_files.sort()
+    trajectory_files.sort(key= lambda r: int(re.search("[0-9]+", r).group()))
     n_files = len(trajectory_files)
     
     if n_trajectories != None and n_trajectories < n_files:
